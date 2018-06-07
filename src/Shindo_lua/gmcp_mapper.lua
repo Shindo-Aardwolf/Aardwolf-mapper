@@ -461,7 +461,7 @@ function set_norecall_thisroom(status)
   if room ~= nil then
     room.norecall = status
     save_room_to_database(current_room, room)
-    Note("No-portal flag "..(status == 1 and "set on" or "removed from").." room "..current_room..".\n")
+    Note("No-recallo flag "..(status == 1 and "set on" or "removed from").." room "..current_room..".\n")
   else
     Note("NOPORTAL ERROR: Room "..current_room.." is not in the database.\n")
   end
@@ -829,17 +829,17 @@ function show_this_room ()
     if room.norecall == 1 then
       flags = flags .. ' norecall'
     end
-    Note("Flags:", flags, "\n")
+    Note("Flags:".. flags.. "\n")
     Note("Exits: ")
     tprint(room.exits)
     Note("\nExit locks: ")
     if room.exit_locks then
-      Note("")
       tprint(room.exit_locks)
+      Note("\n") 
     else
-      Note("none")
+      Note("none\n")
     end
-    Note("\nIgnore exits mismatch: ", room.ignore_exits_mismatch, "\n")
+    --Note("\nIgnore exits mismatch: ".. room.ignore_exits_mismatch.. "\n")
     Note("+---------------------------+\n")
   else
     Note("THISROOM ERROR: You need to type 'LOOK' first to initialize the mapper before trying to get room information.\n")
@@ -1701,6 +1701,7 @@ RegisterSpecialCommand("MapperGoto","map_goto")
 RegisterSpecialCommand("MapperEditNote","room_edit_note")
 --Mapper recall and portal status setting
 RegisterSpecialCommand("MapperNoRecall","set_norecall_thisroom")
+RegisterSpecialCommand("MapperNoPortal","set_noportal_thisroom")
 --Mapper set level and tier for character
 RegisterSpecialCommand("MapperSetTier","set_mytier")
 RegisterSpecialCommand("MapperSetLevel","set_mylevel")
