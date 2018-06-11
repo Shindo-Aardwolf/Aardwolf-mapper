@@ -17,6 +17,15 @@
 
           <body>
             <h3>GMCP Mapper</h3)
+            <ol><b>Instructions for installing</b>
+              <li>Before installing you need to add GMCP options to Blowtorch.  </li>
+              <li>Bring up the menu with the menu key in the top right corner </li>
+              <li>Select <b>Options</b>, then <b>Service</b>, then <b>GMCP Options</b> </li>
+              <li>Pleae make sure <b>Use GMCP</b> is ticked on the right hand side.  </li>
+              <li>Press <b>Support String</b> and put "room 1", "char 1" <b>WITH THE ""</b>. If there
+                are any other options already there then you need a <i>comma</i> between the options.
+                For example: "char 1", "room 1", "comm 1" </li>
+            </ol>
             <p>This plugin uses functions from the Aardwolf MushClient mapper, which was contributed
               to by Nick Gammon, Lasher, Fiendish and Spartacus. There may be other people who
               contributed towards the original plugin that I have not acknowledge, if you are aware 
@@ -54,9 +63,15 @@
               <li><b>MapperGoto</b> <i>uid</i> this command takes you to the room with the given
                 uid, if a path to the room is known.</li>
               <li><b>MapperNoRecall</b> <i>0/1</i> This command marks or clears the current rooms 
-                 status as to wether you can recall from it. 0 clears, 1 sets norecall.</li>
+                status as to wether you can recall from it. 0 clears, 1 sets norecall.</li>
               <li><b>MapperNoPortal</b> <i>0/1</i> This command marks or clears the current rooms 
-                 status as to wether you can portal from it. 0 clears, 1 sets noportal.</li>
+                status as to wether you can portal from it. 0 clears, 1 sets noportal.</li>
+              <li><b>MapperSetTier</b> <i>tier</i> This function sets the current tier of your 
+                character, this is required so that the mapper can determine which portals it can
+                and can't utilise.</li>
+              <li><b>MapperSetLevel</b> <i>level</i> This function sets the current level of your 
+                character, this is required so that the mapper can determine which portals it can
+                and can't utilise.</li>
               <li><b></b> <i></i></li>
             </ul>
           </body>
@@ -72,6 +87,16 @@
         <trigger title="gmcpareasupdate" pattern="%room.area" regexp="false" sequence="1">
           <replace fireWhen="always"></replace>
           <script function="update_gmcp_area" fireWhen="always" />
+          <gag />
+        </trigger>
+        <trigger title="gmcpcharbaseupdate" pattern="%char.base" regexp="false" sequence="1">
+          <replace fireWhen="always"></replace>
+          <script function="update_gmcp_mytier" fireWhen="always" />
+          <gag />
+        </trigger>
+        <trigger title="gmcpcharstatusupdate" pattern="%char.status" regexp="false" sequence="1">
+          <replace fireWhen="always"></replace>
+          <script function="update_gmcp_mystatus" fireWhen="always" />
           <gag />
         </trigger>
       </triggers>
