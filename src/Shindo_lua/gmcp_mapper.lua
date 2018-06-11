@@ -1,9 +1,5 @@
 --All the required modules loaded here
 require("luabins")
---require("tprint")
-
---Plugin_Dir = "/Shindo_lua"
---dofile(GetPluginInstallDirectory()..Plugin_Dir.."/aardmapper.lua")
 
 -- This Section handles all the database calls to open close etc
 require("lsqlite3")
@@ -83,9 +79,12 @@ local environments = {}
 local user_terrain_colour = {}
 local performing_maintenance = false
 local mytier = 0
-local mylevel = 201
+local mylevel = 1
 local speedwalk_prefix = "run"
 local max_depth = 200
+local RoomListTable = {}
+local NumberOfFoundRooms = 0
+local CurrentFoundRoom = 0
 
 local valid_direction = {
   n = "n",
@@ -221,10 +220,10 @@ function tprint (t, indent, done)
     Note(string.rep (" ", indent)) -- indent it
     if type (value) == "table" and not done [value] then
       done [value] = true
-      Note(show (key), " : ");
+      Note(show (key).. " : \n");
       tprint (value, indent + 2, done)
     else
-      Note(show (key), " = ", show (value))
+      Note(show (key).. " = ".. show (value).."\n")
     end
   end
 end
@@ -461,7 +460,7 @@ function set_norecall_thisroom(status)
   if room ~= nil then
     room.norecall = status
     save_room_to_database(current_room, room)
-    Note("No-recallo flag "..(status == 1 and "set on" or "removed from").." room "..current_room..".\n")
+    Note("No-recall flag "..(status == 1 and "set on" or "removed from").." room "..current_room..".\n")
   else
     Note("NOPORTAL ERROR: Room "..current_room.." is not in the database.\n")
   end
@@ -830,16 +829,17 @@ function show_this_room ()
       flags = flags .. ' norecall'
     end
     Note("Flags:".. flags.. "\n")
-    Note("Exits: ")
-    tprint(room.exits)
-    Note("\nExit locks: ")
+    Note("Exits: \n")
+    tprint(room.exits,2)
+    Note("Exit locks: \n")
     if room.exit_locks then
-      tprint(room.exit_locks)
-      Note("\n") 
+      tprint(room.exit_locks,2)
     else
       Note("none\n")
     end
-    --Note("\nIgnore exits mismatch: ".. room.ignore_exits_mismatch.. "\n")
+    if (room.ignore_exits_mismatch) then mismatch = "yes" else mismatch = "no" end
+    Note(string.format("Ignore exits mismatch: %s.\n", mismatch))
+    --Note("Ignore exits mismatch: ".. if (room.ignore_exits_mismatch) then "yes" else "no" end.. "\n")
     Note("+---------------------------+\n")
   else
     Note("THISROOM ERROR: You need to type 'LOOK' first to initialize the mapper before trying to get room information.\n")
@@ -1307,7 +1307,11 @@ function findpath(src, dst, noportals, norecalls)
     end
 
     -- get all exits to any room in the previous set
-    local q = string.format ("select fromuid, touid, dir from exits where touid in (%s) and fromuid not in (%s) and ((fromuid not in ('*','**') and level <= %s) or (fromuid in ('*','**') and level <= %s)) order by length(dir) asc",table.concat(rooms_list,","), visited,mylevel,mylevel+(mytier*10))
+    local q = string.format ("select fromuid, touid, dir from exits where touid in (%s) and fromuid not in (%s) and ((fromuid not in ('*','**') and level <= %s) or (fromuid in ('*','**') and level <= %s)) order by length(dir) asc",
+    table.concat(rooms_list, ","),
+    visited,
+    mylevel,
+    mylevel+(mytier*10))
     local dcount = 0
     room_sets[depth] = {}
     for row in dbnrowsWRAPPER(q) do
@@ -1442,7 +1446,7 @@ function build_speedwalk (path, prefix)
   return string.gsub(s,";",stack_char)
 end -- build_speedwalk
 
-function map_where (destination)
+function map_where_uid (destination)
   if not check_we_can_find () then
     return
   end -- if
@@ -1484,10 +1488,10 @@ function map_where (destination)
     Note(string.format("You're IN room %s!\n", wanted))
     return("")
   end
-end -- map_where
+end -- map_where_uid
 
 function map_goto(destination)
-  local PathToDestination = map_where(destination)
+  local PathToDestination = map_where_uid(destination)
   if PathToDestination ~= "" then
     SendToServer(PathToDestination)
   end
@@ -1539,13 +1543,30 @@ function purgezone(zoneuid)
   Send_GMCP_Packet("request room")
 end
 
--- map_list function contributed by Spartacus
-function map_list (RoomName)
-  -- ok, so if I want to lookup a room in my db, I don't want it only if the mapper can find a sw in a certain # of rooms.
-  -- if it is in the db, I want its vnum and area, so that I can figure out how to get there if the mapper does not know.
+-- map_list_rooms function contributed by Spartacus
+function map_list_rooms (SearchData)
+  -- ok, so if I want to lookup a room in my db, I don't want it only if the mapper can find 
+  -- a sw in a certain # of rooms. if it is in the db, I want its vnum and area, so that I can 
+  -- figure out how to get there if the mapper does not know.
+  -- Now has the added functionality that it can return a table of room numbers if requested to.
+  local ReturnedRoomList = {}
+  local _, _, ReturnList, RoomName = string.find(SearchData,"^(%d?)%s?(.*)$")
+  if ReturnList ~= nil then 
+    ReturnList = tonumber(ReturnList) or 0
+  else 
+    ReturnList = 0 
+    --Note("was null\n")
+  end
+  RoomName = RoomName:match("^%s*(.-)%s*$") 
+  if ReturnList ~= 0 then 
+    Note (string.format("Testing pattern matching.\nOriginal SearchData was '%s'.\n%d for ReturnList and %s for RoomName.\n", 
+    SearchData, ReturnList, RoomName))
+  end
   local area = ""
-  local count = 0
-  Note("+------------------------------ START OF SEARCH -------------------------------+\n")
+  local count = 1
+  if ReturnList  == 0 then
+    Note("+------------------------------ START OF SEARCH -------------------------------+\n")
+  end
   -- find matching rooms using FTS3
   local name = "%"..RoomName.."%"
   if string.sub(RoomName,1,1) == "\"" and string.sub(RoomName,-1) == "\"" then
@@ -1554,16 +1575,107 @@ function map_list (RoomName)
 
   -- faster than "SELECT uid, name, area FROM rooms WHERE name LIKE %s ORDER BY area LIMIT 101"
   for row in dbnrowsWRAPPER(string.format ("SELECT rooms_lookup.uid as uid, rooms_lookup.name as name, area FROM (select uid, name FROM rooms_lookup WHERE name LIKE %s) AS rooms_lookup JOIN rooms ON rooms_lookup.uid = rooms.uid ORDER BY area LIMIT 101;", fixsql (name))) do
-    if count < 100 then
-      Note(string.format("(%s) %s is in area \"%s\"\n",row.uid, row.name, row.area))
+    if count < 101 then
+      if ReturnList  == 0 then
+        --tprint(row)
+        Note(string.format("( %5d ) %-40s is in area \"%s\"\n",row.uid, row.name, row.area))
+      else
+        table.insert(ReturnedRoomList, row)
+        Note(string.format("%03d, ( %5d ) %-40s is in area \"%s\"\n",
+        count,
+        row["uid"],
+        row["name"],
+        row["area"]))
+      end
     end
     count = count + 1
   end   -- finding room
   if count > 100 then
-    Note(string.format("More than 100 search results found. Aborting query. Try a more specific search phrase than '%s'.\n",RoomName))
+    if ReturnList  == 0 then
+      Note(string.format("More than 100 search results found. Aborting query. Try a more specific search phrase than '%s'.\n",RoomName))
+    end
+  end
+  if ReturnList  == 0 then
+    Note("+-------------------------------- END OF SEARCH -------------------------------+\n")
+  end
+
+  if ReturnList ~= 0 then 
+    --Note ("returned list.\n")
+    return ReturnedRoomList
+  end
+end -- map_list_rooms
+
+function populate_room_list(RoomName)
+  RoomListTable = map_list_rooms("1 "..RoomName)
+  Note("+------------------------------ START OF SEARCH -------------------------------+\n")
+  for count, RoomInfo in ipairs(RoomListTable) do
+    Note(string.format("%03d, ( %5s ) %-40s is in \"%s\"\n",
+    count, RoomInfo["uid"], RoomInfo["name"], RoomInfo["area"]))
+    NumberOfFoundRooms = count
   end
   Note("+-------------------------------- END OF SEARCH -------------------------------+\n")
-end -- map_list
+  CurrentFoundRoom = 0
+end
+
+function goto_listed_number(NumberInList)
+  if RoomListTable == {} then
+    Note("There are no rooms in the list you wish to use.\n"..
+    "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
+    return
+  end
+  if not(positive_integer_check(NumberInList)) 
+    and (tonumber(NumberInList) > NumberOfFoundRooms) then
+    Note(string.format("This function requires a positive number between 1 and %s as input.\n"),
+    NumberOfFoundRooms)
+    return
+  end
+  CurrentFoundRoom = tonumber(NumberInList)
+  map_goto(tonumber(RoomListTable[CurrentFoundRoom].uid))
+end
+
+function goto_listed_next()
+  if RoomListTable == {} then
+    Note("There are no rooms in the list you wish to use.\n"..
+    "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
+    return
+  end
+  if CurrentFoundRoom == NumberOfFoundRooms then
+    Note("You are already at the last room in the list.\n")
+    return
+  end
+  -- if we haven't started traversing the list then set our position to the first room in the list
+  if CurrentFoundRoom == 0 then 
+    CurrentFoundRoom = 1
+  else
+    CurrentFoundRoom = CurrentFoundRoom + 1
+  end
+  Note(string.format("Going to %s in %s.\n", 
+  RoomListTable[CurrentFoundRoom].name, 
+  RoomListTable[CurrentFoundRoom].area))
+  map_goto(tonumber(RoomListTable[CurrentFoundRoom].uid))
+end
+
+function goto_listed_previous()
+  if RoomListTable == {} then
+    Note("There are no rooms in the list you wish to use.\n"..
+    "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
+    return
+  end
+  if CurrentFoundRoom < 2 then
+    Note("You are already at the first room in the list.\n")
+    return
+  end
+  -- if we haven't started traversing the list then set our position to the last room in the list
+  if CurrentFoundRoom == 0 then
+    CurrentFoundRoom = NumberOfFoundRooms
+  else
+    CurrentFoundRoom = CurrentFoundRoom - 1
+  end
+  Note(string.format("Going to %s in %s.\n", 
+  RoomListTable[CurrentFoundRoom].name, 
+  RoomListTable[CurrentFoundRoom].area))
+  map_goto(tonumber(RoomListTable[CurrentFoundRoom].uid))
+end
 
 function create_tables ()
   -- create rooms table
@@ -1642,21 +1754,43 @@ function create_tables ()
   ]])
 end -- function create_tables
 
+function update_gmcp_mytier(GMCPCharBase)
+  mytier = tonumber(GMCPCharBase.tier)
+end
+
+function update_gmcp_mystatus(GMCPCharStatus)
+  mylevel = tonumber(GMCPCharStatus.level)
+end
+
+function report_mystuff()
+  Note(string.format("Current level: %s\nCurrent tier: %s\n", mylevel, mytier))
+end
+
 function set_mytier(sent_value)
   if positive_integer_check(sent_value) then
-    mytier = tonumber(sent_value)
+    if (tonumber(sent_value) > -1) and (tonumber(sent_value) < 10) then
+      mytier = tonumber(sent_value)
+    else
+      mytier = 0
+      Note("Please select a level from 0 to 9. mytier set to 0.\n")
+    end
   else
     mytier = 0
-    Note("We do not have a valid tier for your character")
+    Note("We do not have a valid tier for your character. It has defaulted to 0.\n")
   end
 end
 
 function set_mylevel(sent_value)
   if positive_integer_check(sent_value) then
-    mylevel = tonumber(sent_value)
+    if (tonumber(sent_value) > 0) and (tonumber(sent_value) < 211) then
+      mylevel = tonumber(sent_value)
+    else
+      mylevel = 0
+      Note("Please select a level from 1 to 210. mylevel set to 0.\n")
+    end
   else
     mylevel = 0
-    Note("We do not have a valid level for your character")
+    Note("We do not have a valid level for your character. It has defaulted to 0.\n")
   end
 end
 
@@ -1666,7 +1800,6 @@ function processGMCPRoom(CapturedStuff)
 end
 
 function OnBackgroundStartup()
-  Send_GMCP_Packet('Core.Supports.Set [ "Room 1" ]')
   --Send_GMCP_Packet("rawcolor on")
 end
 
@@ -1675,11 +1808,10 @@ function OnPluginConnect ()
     maybe_Note("GMCP Mapper: Reconnected; opening map database.")
     db = assert (sqlite3.open(dbPath))
   end
-  Send_GMCP_Packet("rawcolor on")
+  --Send_GMCP_Packet("rawcolor on")
 end -- OnPluginConnect
 
 function PrepGMCP()
-  Send_GMCP_Packet('Core.Supports.Set [ "Room 1" ]')
   --Send_GMCP_Packet("rawcolor on")
 end
 
@@ -1689,8 +1821,8 @@ RegisterSpecialCommand("MapperGMCPForceOn","PrepGMCP")
 -- Mapper Information functions
 RegisterSpecialCommand("MapperShowThisRoom","show_this_room")
 RegisterSpecialCommand("MapperListAreas","map_areas")
-RegisterSpecialCommand("MapperListRooms","map_list")
-RegisterSpecialCommand("MapperWhere","map_where")
+RegisterSpecialCommand("MapperListRooms","map_list_rooms")
+RegisterSpecialCommand("MapperWhere","map_where_uid")
 --Mapper Cexit functions
 --Mapper Portal functions
 RegisterSpecialCommand("MapperPortalAdd","map_portal_add")
@@ -1703,7 +1835,14 @@ RegisterSpecialCommand("MapperEditNote","room_edit_note")
 RegisterSpecialCommand("MapperNoRecall","set_norecall_thisroom")
 RegisterSpecialCommand("MapperNoPortal","set_noportal_thisroom")
 --Mapper set level and tier for character
-RegisterSpecialCommand("MapperSetTier","set_mytier")
-RegisterSpecialCommand("MapperSetLevel","set_mylevel")
+--RegisterSpecialCommand("MapperSetTier","set_mytier")
+--RegisterSpecialCommand("MapperSetLevel","set_mylevel")
+RegisterSpecialCommand("MapperReport","report_mystuff")
+--Mapper special commands for moving around rooms looked up
+RegisterSpecialCommand("MapperPopulateRoomList","populate_room_list")
+RegisterSpecialCommand("MapperGotoListNumber","goto_listed_number")
+RegisterSpecialCommand("MapperGotoListNext","goto_listed_next")
+RegisterSpecialCommand("MapperGotoListPrevious","goto_listed_previous")
+
 
 Note("GMCP Mapper plugin startup\n")
