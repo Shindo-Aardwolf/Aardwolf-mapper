@@ -1776,34 +1776,6 @@ function report_mystuff()
   Note(string.format("Current level: %s\nCurrent tier: %s\n", mylevel, mytier))
 end
 
-function set_mytier(sent_value)
-  if positive_integer_check(sent_value) then
-    if (tonumber(sent_value) > -1) and (tonumber(sent_value) < 10) then
-      mytier = tonumber(sent_value)
-    else
-      mytier = 0
-      Note("Please select a level from 0 to 9. mytier set to 0.\n")
-    end
-  else
-    mytier = 0
-    Note("We do not have a valid tier for your character. It has defaulted to 0.\n")
-  end
-end
-
-function set_mylevel(sent_value)
-  if positive_integer_check(sent_value) then
-    if (tonumber(sent_value) > 0) and (tonumber(sent_value) < 211) then
-      mylevel = tonumber(sent_value)
-    else
-      mylevel = 0
-      Note("Please select a level from 1 to 210. mylevel set to 0.\n")
-    end
-  else
-    mylevel = 0
-    Note("We do not have a valid level for your character. It has defaulted to 0.\n")
-  end
-end
-
 function processGMCPRoom(CapturedStuff)
   --Note("we got stuff".."\n")
   return
@@ -1845,8 +1817,6 @@ RegisterSpecialCommand("MapperEditNote","room_edit_note")
 RegisterSpecialCommand("MapperNoRecall","set_norecall_thisroom")
 RegisterSpecialCommand("MapperNoPortal","set_noportal_thisroom")
 --Mapper set level and tier for character
---RegisterSpecialCommand("MapperSetTier","set_mytier")
---RegisterSpecialCommand("MapperSetLevel","set_mylevel")
 RegisterSpecialCommand("MapperReport","report_mystuff")
 --Mapper special commands for moving around rooms looked up
 RegisterSpecialCommand("MapperPopulateRoomList","populate_room_list")
