@@ -715,7 +715,7 @@ function custom_exit (cexit_cmd)
   local cexit_start
 
   if cexit_command == "" then
-    world.Note("Nothing to do!")
+    Note("Nothing to do!")
     return
   end -- if cexit_command
 
@@ -730,12 +730,12 @@ function custom_exit (cexit_cmd)
   if current_room then
     cexit_start = current_room
   else
-    world.Note("CEXIT FAILED: No room received from the mud yet. Try using the 'LOOK' command first.")
+    Note("CEXIT FAILED: No room received from the mud yet. Try using the 'LOOK' command first.")
     return
   end -- if current_room
 
   if cexit_start == "-1" then
-    world.Note ("CEXIT FAILED: You cannot link custom exits from unmappable rooms.")
+    Note ("CEXIT FAILED: You cannot link custom exits from unmappable rooms.")
     return
   end
 
@@ -745,7 +745,7 @@ function custom_exit (cexit_cmd)
     for wait_secs in string.gmatch(cexit_command, "wait%((%d*.?%d+)%)") do
       added_waits = added_waits + tonumber(wait_secs)
     end
-    world.Note("CEXIT: WAIT FOR CONFIRMATION BEFORE MOVING.\nThis should take about "..cexit_delay+added_waits.." seconds"..(((added_waits ~= 0) and " (includes "..added_waits.." seconds in added waits)") or "")..".")
+    Note("CEXIT: WAIT FOR CONFIRMATION BEFORE MOVING.\nThis should take about "..cexit_delay+added_waits.." seconds"..(((added_waits ~= 0) and " (includes "..added_waits.." seconds in added waits)") or "")..".")
     BroadcastPlugin(999, "repaint")
     ExecuteWithWaits(cexit_command)
 
