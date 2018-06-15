@@ -754,9 +754,9 @@ function custom_exit (cexit_cmd)
     cexit_dest = current_room
     if cexit_dest then
       if cexit_dest == "-1" then
-        world.Note ("CEXIT FAILED: You cannot link custom exits to unmappable rooms.")
+        Note ("CEXIT FAILED: You cannot link custom exits to unmappable rooms.")
       elseif cexit_dest ~= cexit_start then
-        world.Note (string.format("Custom Exit CONFIRMED: %s (%s) -> %s", cexit_start, cexit_command, cexit_dest))
+        Note (string.format("Custom Exit CONFIRMED: %s (%s) -> %s", cexit_start, cexit_command, cexit_dest))
         dbCheckExecute(string.format ("INSERT OR REPLACE INTO exits (dir, fromuid, touid) VALUES (%s, %s, %s);",
         fixsql  (cexit_command),  -- direction (eg. "n")
         fixsql  (cexit_start),  -- from current room
@@ -765,10 +765,10 @@ function custom_exit (cexit_cmd)
         rooms[cexit_start].exits[cexit_command] = cexit_dest
         rooms[cexit_start].exit_locks[cexit_command] = "0"
       else
-        world.Note (string.format("CEXIT FAILED: Custom Exit %s leads back here!", cexit_command))
+        Note (string.format("CEXIT FAILED: Custom Exit %s leads back here!", cexit_command))
       end
     else
-      world.Note ("CEXIT FAILED: Need to know where we ended up.")
+      Note ("CEXIT FAILED: Need to know where we ended up.")
     end
   end)
 end -- custom_exit
@@ -1558,10 +1558,10 @@ function map_list_rooms (SearchData)
     --Note("was null\n")
   end
   RoomName = RoomName:match("^%s*(.-)%s*$") 
-  if ReturnList ~= 0 then 
-    Note (string.format("Testing pattern matching.\nOriginal SearchData was '%s'.\n%d for ReturnList and %s for RoomName.\n", 
-    SearchData, ReturnList, RoomName))
-  end
+--  if ReturnList ~= 0 then 
+--    Note (string.format("Testing pattern matching.\nOriginal SearchData was '%s'.\n%d for ReturnList and %s for RoomName.\n", 
+--    SearchData, ReturnList, RoomName))
+--  end
   local area = ""
   local count = 1
   if ReturnList  == 0 then
@@ -1581,11 +1581,7 @@ function map_list_rooms (SearchData)
         Note(string.format("( %5d ) %-40s is in area \"%s\"\n",row.uid, row.name, row.area))
       else
         table.insert(ReturnedRoomList, row)
-        Note(string.format("%03d, ( %5d ) %-40s is in area \"%s\"\n",
-        count,
-        row["uid"],
-        row["name"],
-        row["area"]))
+--        Note(string.format("%03d, ( %5d ) %-40s is in area \"%s\"\n", count, row["uid"], row["name"], row["area"]))
       end
     end
     count = count + 1
@@ -1639,13 +1635,12 @@ function goto_listed_next()
     "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
     return
   end
-  if CurrentFoundRoom == NumberOfFoundRooms then
-    Note("You are already at the last room in the list.\n")
-    return
-  end
   -- if we haven't started traversing the list then set our position to the first room in the list
   if CurrentFoundRoom == 0 then 
     CurrentFoundRoom = 1
+  elseif CurrentFoundRoom == NumberOfFoundRooms then
+    Note("You are already at the last room in the list.\n")
+    return
   else
     CurrentFoundRoom = CurrentFoundRoom + 1
   end
@@ -1661,15 +1656,30 @@ function goto_listed_previous()
     "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
     return
   end
-  if CurrentFoundRoom < 2 then
-    Note("You are already at the first room in the list.\n")
-    return
-  end
   -- if we haven't started traversing the list then set our position to the last room in the list
   if CurrentFoundRoom == 0 then
     CurrentFoundRoom = NumberOfFoundRooms
+  elseif CurrentFoundRoom == 1 then
+    Note("You are already at the first room in the list.\n")
+    return
   else
     CurrentFoundRoom = CurrentFoundRoom - 1
+  end
+  Note(string.format("Going to %s in %s.\n", 
+  RoomListTable[CurrentFoundRoom].name, 
+  RoomListTable[CurrentFoundRoom].area))
+  map_goto(tonumber(RoomListTable[CurrentFoundRoom].uid))
+end
+
+function goto_listed_resume()
+  if RoomListTable == {} then
+    Note("There are no rooms in the list you wish to use.\n"..
+    "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
+    return
+  end
+  if CurrentFoundRoom == 0 then
+    Note("You still need to select a room to run to.\n")
+    return
   end
   Note(string.format("Going to %s in %s.\n", 
   RoomListTable[CurrentFoundRoom].name, 
@@ -1843,6 +1853,6 @@ RegisterSpecialCommand("MapperPopulateRoomList","populate_room_list")
 RegisterSpecialCommand("MapperGotoListNumber","goto_listed_number")
 RegisterSpecialCommand("MapperGotoListNext","goto_listed_next")
 RegisterSpecialCommand("MapperGotoListPrevious","goto_listed_previous")
-
+RegisterSpecialCommand("MapperGotoListResume","goto_listed_resume")
 
 Note("GMCP Mapper plugin startup\n")
