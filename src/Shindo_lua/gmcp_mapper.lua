@@ -1638,12 +1638,22 @@ function goto_listed_next()
     Note("There are no rooms in the list you wish to use.\n"..
     "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
     return
-  elseif CurrentFoundRoom > NumberOfFoundRooms then
-    Note("You are already at the last room in the list.\n")
-    return
-  -- if we haven't started traversing the list then set our position to the first room in the list
-  elseif tonumber(RoomListTable[CurrentFoundRoom].uid) == tonumber(current_room) then
+  end
+  if CurrentFoundRoom = 0 then
+    CurrentFoundRoom = 1
+    Note("@WInitialising@w the room we are looking for.\n")
+  end
+  if CurrentFoundRoom < 1 then
+    CurrentFoundRoom = 1
+  end
+  if tonumber(RoomListTable[CurrentFoundRoom].uid) == tonumber(current_room) then
+  -- if we are in the room for this search, head to the next room
     CurrentFoundRoom = CurrentFoundRoom + 1
+  end
+  if CurrentFoundRoom > NumberOfFoundRooms then
+    CurrentFoundRoom = NumberOfFoundRooms
+    Note("You can't search any further forward in the list.\n")
+    return
   end
   Note(string.format("Going to %s in %s.\n", 
   RoomListTable[CurrentFoundRoom].name, 
@@ -1657,14 +1667,20 @@ function goto_listed_previous()
     "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
     return
   end
-  if CurrentFoundRoom == 0 then
+  if CurrentFoundRoom = 0 then 
+    Note("@WInitialising@w the room we are looking for.\n")
     CurrentFoundRoom = NumberOfFoundRooms
-  elseif CurrentFoundRoom < 1 then
-    Note("You are already at the first room in the list.\n")
-    return
-  -- if we haven't started traversing the list then set our position to the last room in the list
-  elseif tonumber(RoomListTable[CurrentFoundRoom].uid) == tonumber(current_room) then
+  end
+  if CurrentFoundRoom > NumberOfFoundRooms then
+    CurrentFoundRoom = NumberOfFoundRooms
+  end
+  if tonumber(RoomListTable[CurrentFoundRoom].uid) == tonumber(current_room) then
     CurrentFoundRoom = CurrentFoundRoom - 1
+  end
+  if CurrentFoundRoom < 1 then 
+    Note("You can't search any further back in the list.\n")
+    CurrentFoundRoom = 1
+    return
   end
   Note(string.format("Going to %s in %s.\n", 
   RoomListTable[CurrentFoundRoom].name, 
