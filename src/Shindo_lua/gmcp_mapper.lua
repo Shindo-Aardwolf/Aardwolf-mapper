@@ -715,7 +715,7 @@ function custom_exit (cexit_cmd)
   local cexit_start
 
   if cexit_command == "" then
-    Note("Nothing to do!")
+    world.Note("Nothing to do!")
     return
   end -- if cexit_command
 
@@ -730,12 +730,12 @@ function custom_exit (cexit_cmd)
   if current_room then
     cexit_start = current_room
   else
-    Note("CEXIT FAILED: No room received from the mud yet. Try using the 'LOOK' command first.")
+    world.Note("CEXIT FAILED: No room received from the mud yet. Try using the 'LOOK' command first.")
     return
   end -- if current_room
 
   if cexit_start == "-1" then
-    Note ("CEXIT FAILED: You cannot link custom exits from unmappable rooms.")
+    world.Note ("CEXIT FAILED: You cannot link custom exits from unmappable rooms.")
     return
   end
 
@@ -745,7 +745,7 @@ function custom_exit (cexit_cmd)
     for wait_secs in string.gmatch(cexit_command, "wait%((%d*.?%d+)%)") do
       added_waits = added_waits + tonumber(wait_secs)
     end
-    Note("CEXIT: WAIT FOR CONFIRMATION BEFORE MOVING.\nThis should take about "..cexit_delay+added_waits.." seconds"..(((added_waits ~= 0) and " (includes "..added_waits.." seconds in added waits)") or "")..".")
+    world.Note("CEXIT: WAIT FOR CONFIRMATION BEFORE MOVING.\nThis should take about "..cexit_delay+added_waits.." seconds"..(((added_waits ~= 0) and " (includes "..added_waits.." seconds in added waits)") or "")..".")
     BroadcastPlugin(999, "repaint")
     ExecuteWithWaits(cexit_command)
 
@@ -754,9 +754,9 @@ function custom_exit (cexit_cmd)
     cexit_dest = current_room
     if cexit_dest then
       if cexit_dest == "-1" then
-        Note ("CEXIT FAILED: You cannot link custom exits to unmappable rooms.")
+        world.Note ("CEXIT FAILED: You cannot link custom exits to unmappable rooms.")
       elseif cexit_dest ~= cexit_start then
-        Note (string.format("Custom Exit CONFIRMED: %s (%s) -> %s", cexit_start, cexit_command, cexit_dest))
+        world.Note (string.format("Custom Exit CONFIRMED: %s (%s) -> %s", cexit_start, cexit_command, cexit_dest))
         dbCheckExecute(string.format ("INSERT OR REPLACE INTO exits (dir, fromuid, touid) VALUES (%s, %s, %s);",
         fixsql  (cexit_command),  -- direction (eg. "n")
         fixsql  (cexit_start),  -- from current room
@@ -765,10 +765,10 @@ function custom_exit (cexit_cmd)
         rooms[cexit_start].exits[cexit_command] = cexit_dest
         rooms[cexit_start].exit_locks[cexit_command] = "0"
       else
-        Note (string.format("CEXIT FAILED: Custom Exit %s leads back here!", cexit_command))
+        world.Note (string.format("CEXIT FAILED: Custom Exit %s leads back here!", cexit_command))
       end
     else
-      Note ("CEXIT FAILED: Need to know where we ended up.")
+      world.Note ("CEXIT FAILED: Need to know where we ended up.")
     end
   end)
 end -- custom_exit
@@ -1558,10 +1558,10 @@ function map_list_rooms (SearchData)
     --Note("was null\n")
   end
   RoomName = RoomName:match("^%s*(.-)%s*$") 
---  if ReturnList ~= 0 then 
---    Note (string.format("Testing pattern matching.\nOriginal SearchData was '%s'.\n%d for ReturnList and %s for RoomName.\n", 
---    SearchData, ReturnList, RoomName))
---  end
+  if ReturnList ~= 0 then 
+    Note (string.format("Testing pattern matching.\nOriginal SearchData was '%s'.\n%d for ReturnList and %s for RoomName.\n", 
+    SearchData, ReturnList, RoomName))
+  end
   local area = ""
   local count = 1
   if ReturnList  == 0 then
@@ -1581,7 +1581,11 @@ function map_list_rooms (SearchData)
         Note(string.format("( %5d ) %-40s is in area \"%s\"\n",row.uid, row.name, row.area))
       else
         table.insert(ReturnedRoomList, row)
---        Note(string.format("%03d, ( %5d ) %-40s is in area \"%s\"\n", count, row["uid"], row["name"], row["area"]))
+        Note(string.format("%03d, ( %5d ) %-40s is in area \"%s\"\n",
+        count,
+        row["uid"],
+        row["name"],
+        row["area"]))
       end
     end
     count = count + 1
@@ -1635,13 +1639,14 @@ function goto_listed_next()
     "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
     return
   end
+  if CurrentFoundRoom == NumberOfFoundRooms then
+    Note("You are already at the last room in the list.\n")
+    return
+  end
   -- if we haven't started traversing the list then set our position to the first room in the list
   if CurrentFoundRoom == 0 then 
     CurrentFoundRoom = 1
-  elseif CurrentFoundRoom == NumberOfFoundRooms then
-    Note("You are already at the last room in the list.\n")
-    return
-  else
+  elseif tonumber(RoomListTable[CurrentFoundRoom].uid) == tonumber(currentRoom.roomid) then
     CurrentFoundRoom = CurrentFoundRoom + 1
   end
   Note(string.format("Going to %s in %s.\n", 
@@ -1656,30 +1661,15 @@ function goto_listed_previous()
     "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
     return
   end
+  if CurrentFoundRoom < 2 then
+    Note("You are already at the first room in the list.\n")
+    return
+  end
   -- if we haven't started traversing the list then set our position to the last room in the list
   if CurrentFoundRoom == 0 then
     CurrentFoundRoom = NumberOfFoundRooms
-  elseif CurrentFoundRoom == 1 then
-    Note("You are already at the first room in the list.\n")
-    return
-  else
+  elseif tonumber(RoomListTable[CurrentFoundRoom].uid) == tonumber(currentRoom.roomid) then
     CurrentFoundRoom = CurrentFoundRoom - 1
-  end
-  Note(string.format("Going to %s in %s.\n", 
-  RoomListTable[CurrentFoundRoom].name, 
-  RoomListTable[CurrentFoundRoom].area))
-  map_goto(tonumber(RoomListTable[CurrentFoundRoom].uid))
-end
-
-function goto_listed_resume()
-  if RoomListTable == {} then
-    Note("There are no rooms in the list you wish to use.\n"..
-    "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
-    return
-  end
-  if CurrentFoundRoom == 0 then
-    Note("You still need to select a room to run to.\n")
-    return
   end
   Note(string.format("Going to %s in %s.\n", 
   RoomListTable[CurrentFoundRoom].name, 
@@ -1776,6 +1766,34 @@ function report_mystuff()
   Note(string.format("Current level: %s\nCurrent tier: %s\n", mylevel, mytier))
 end
 
+function set_mytier(sent_value)
+  if positive_integer_check(sent_value) then
+    if (tonumber(sent_value) > -1) and (tonumber(sent_value) < 10) then
+      mytier = tonumber(sent_value)
+    else
+      mytier = 0
+      Note("Please select a level from 0 to 9. mytier set to 0.\n")
+    end
+  else
+    mytier = 0
+    Note("We do not have a valid tier for your character. It has defaulted to 0.\n")
+  end
+end
+
+function set_mylevel(sent_value)
+  if positive_integer_check(sent_value) then
+    if (tonumber(sent_value) > 0) and (tonumber(sent_value) < 211) then
+      mylevel = tonumber(sent_value)
+    else
+      mylevel = 0
+      Note("Please select a level from 1 to 210. mylevel set to 0.\n")
+    end
+  else
+    mylevel = 0
+    Note("We do not have a valid level for your character. It has defaulted to 0.\n")
+  end
+end
+
 function processGMCPRoom(CapturedStuff)
   --Note("we got stuff".."\n")
   return
@@ -1816,13 +1834,13 @@ RegisterSpecialCommand("MapperEditNote","room_edit_note")
 --Mapper recall and portal status setting
 RegisterSpecialCommand("MapperNoRecall","set_norecall_thisroom")
 RegisterSpecialCommand("MapperNoPortal","set_noportal_thisroom")
---Mapper set level and tier for character
+--Mapper report level and tier for character
 RegisterSpecialCommand("MapperReport","report_mystuff")
 --Mapper special commands for moving around rooms looked up
 RegisterSpecialCommand("MapperPopulateRoomList","populate_room_list")
 RegisterSpecialCommand("MapperGotoListNumber","goto_listed_number")
 RegisterSpecialCommand("MapperGotoListNext","goto_listed_next")
 RegisterSpecialCommand("MapperGotoListPrevious","goto_listed_previous")
-RegisterSpecialCommand("MapperGotoListResume","goto_listed_resume")
+
 
 Note("GMCP Mapper plugin startup\n")
