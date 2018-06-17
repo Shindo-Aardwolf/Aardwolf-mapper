@@ -1638,15 +1638,11 @@ function goto_listed_next()
     Note("There are no rooms in the list you wish to use.\n"..
     "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
     return
-  end
-  if CurrentFoundRoom == NumberOfFoundRooms then
+  elseif CurrentFoundRoom > NumberOfFoundRooms then
     Note("You are already at the last room in the list.\n")
     return
-  end
   -- if we haven't started traversing the list then set our position to the first room in the list
-  if CurrentFoundRoom == 0 then 
-    CurrentFoundRoom = 1
-  elseif tonumber(RoomListTable[CurrentFoundRoom].uid) == tonumber(currentRoom.roomid) then
+  elseif tonumber(RoomListTable[CurrentFoundRoom].uid) == tonumber(current_room) then
     CurrentFoundRoom = CurrentFoundRoom + 1
   end
   Note(string.format("Going to %s in %s.\n", 
@@ -1661,14 +1657,13 @@ function goto_listed_previous()
     "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
     return
   end
-  if CurrentFoundRoom < 2 then
-    Note("You are already at the first room in the list.\n")
-    return
-  end
-  -- if we haven't started traversing the list then set our position to the last room in the list
   if CurrentFoundRoom == 0 then
     CurrentFoundRoom = NumberOfFoundRooms
-  elseif tonumber(RoomListTable[CurrentFoundRoom].uid) == tonumber(currentRoom.roomid) then
+  elseif CurrentFoundRoom < 1 then
+    Note("You are already at the first room in the list.\n")
+    return
+  -- if we haven't started traversing the list then set our position to the last room in the list
+  elseif tonumber(RoomListTable[CurrentFoundRoom].uid) == tonumber(current_room) then
     CurrentFoundRoom = CurrentFoundRoom - 1
   end
   Note(string.format("Going to %s in %s.\n", 
