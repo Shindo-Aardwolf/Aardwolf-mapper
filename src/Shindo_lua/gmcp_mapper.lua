@@ -1607,14 +1607,14 @@ function map_list_rooms (SearchData)
 end -- map_list_rooms
 
 -- map_list_rooms function contributed by Spartacus
-function map_list_rooms_extended (SearchData, ReturnAsList, SearchedbyArea)
+function map_list_rooms_extended (SearchData, ReturnAsList, SearchByArea)
   -- ok, so if I want to lookup a room in my db, I don't want it only if the mapper can find 
   -- a sw in a certain # of rooms. if it is in the db, I want its vnum and area, so that I can 
   -- figure out how to get there if the mapper does not know.
   -- Now has the added functionality that it can return a table of room numbers if requested to.
   local ReturnedRoomList = {}
   local ReturnList = tonumber(ReturnAsList) or 0
-  local SearchArea = tostring(SearchedByArea) or ""
+  local SearchArea = tostring(SearchByArea) or ""
   RoomName = RoomName:match("^%s*(.-)%s*$") 
   local area = ""
   local count = 1
@@ -1678,8 +1678,10 @@ function populate_room_list(RoomName)
   CurrentFoundRoom = 0
 end
 
-function populate_room_list_in_area(RoomName)
-  RoomListTable = map_list_rooms("1 "..RoomName)
+function populate_room_list_with_area(SearchData)
+  --SearchData == "areaname roomname"
+  local _, _, SearchByArea, RoomName = string.find(SearchData,"^(%w+)%s(.*)$")
+  RoomListTable = map_list_rooms_extended(RoomName, 1, SearchByArea)
   Note("+------------------------------ START OF SEARCH -------------------------------+\n")
   for count, RoomInfo in ipairs(RoomListTable) do
     Note(string.format("%03d, ( %5s ) %-40s is in \"%s\"\n",
@@ -1922,6 +1924,7 @@ RegisterSpecialCommand("MapperNoPortal","set_noportal_thisroom")
 RegisterSpecialCommand("MapperReport","report_mystuff")
 --Mapper special commands for moving around rooms looked up
 RegisterSpecialCommand("MapperPopulateRoomList","populate_room_list")
+RegisterSpecialCommand("MapperPopulateRoomListArea","populate_room_list_with_area")
 RegisterSpecialCommand("MapperGotoListNumber","goto_listed_number")
 RegisterSpecialCommand("MapperGotoListNext","goto_listed_next")
 RegisterSpecialCommand("MapperGotoListPrevious","goto_listed_previous")
