@@ -1680,8 +1680,12 @@ end
 
 function populate_room_list_with_area(SearchData)
   --SearchData == "areaname roomname"
-  local _, _, SearchByArea, RoomName = string.find(SearchData,"^(%w+)%s(.*)$")
-  RoomListTable = map_list_rooms_extended(RoomName, 1, SearchByArea)
+  local _, _, SearchArea, RoomName = string.find(SearchData,"^(%w+)%s(.*)$")
+  SearchArea = string.lower(SearchArea)
+  --if SearchArea == "here" then
+  --  SearchArea = some variable with the current area, may need to use a function
+  --end
+  RoomListTable = map_list_rooms_extended(RoomName, 1, SearchArea)
   Note("+------------------------------ START OF SEARCH -------------------------------+\n")
   for count, RoomInfo in ipairs(RoomListTable) do
     Note(string.format("%03d, ( %5s ) %-40s is in \"%s\"\n",
