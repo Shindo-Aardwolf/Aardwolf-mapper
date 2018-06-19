@@ -1615,7 +1615,7 @@ function map_list_rooms_extended (SearchData, ReturnAsList, SearchByArea)
   local ReturnedRoomList = {}
   local ReturnList = tonumber(ReturnAsList) or 0
   local SearchArea = tostring(SearchByArea) or ""
-  RoomName = RoomName:match("^%s*(.-)%s*$") 
+  RoomName = SearchData:match("^%s*(.-)%s*$") 
   local area = ""
   local count = 1
   if ReturnList  == 0 then
