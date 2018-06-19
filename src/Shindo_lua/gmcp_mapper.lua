@@ -1558,10 +1558,6 @@ function map_list_rooms (SearchData)
     --Note("was null\n")
   end
   RoomName = RoomName:match("^%s*(.-)%s*$") 
-  if ReturnList ~= 0 then 
-    Note (string.format("Testing pattern matching.\nOriginal SearchData was '%s'.\n%d for ReturnList and %s for RoomName.\n", 
-    SearchData, ReturnList, RoomName))
-  end
   local area = ""
   local count = 1
   if ReturnList  == 0 then
@@ -1573,19 +1569,15 @@ function map_list_rooms (SearchData)
     name = string.sub(RoomName,2,-2)
   end
 
-  -- faster than "SELECT uid, name, area FROM rooms WHERE name LIKE %s ORDER BY area LIMIT 101"
-  for row in dbnrowsWRAPPER(string.format ("SELECT rooms_lookup.uid as uid, rooms_lookup.name as name, area FROM (select uid, name FROM rooms_lookup WHERE name LIKE %s) AS rooms_lookup JOIN rooms ON rooms_lookup.uid = rooms.uid ORDER BY area LIMIT 101;", fixsql (name))) do
+  local SQLQuery = "SELECT rooms_lookup.uid as uid, rooms_lookup.name as name, "..
+  "area FROM (select uid, name FROM rooms_lookup WHERE name LIKE %s) "..
+  "AS rooms_lookup JOIN rooms ON rooms_lookup.uid = rooms.uid ORDER BY area LIMIT 101;"
+  for row in dbnrowsWRAPPER(string.format (SQLQuery, fixsql (name))) do
     if count < 101 then
       if ReturnList  == 0 then
-        --tprint(row)
         Note(string.format("( %5d ) %-40s is in area \"%s\"\n",row.uid, row.name, row.area))
       else
         table.insert(ReturnedRoomList, row)
-        --Note(string.format("%03d, ( %5d ) %-40s is in area \"%s\"\n",
-        --count,
-        --row["uid"],
-        --row["name"],
-        --row["area"]))
       end
     end
     count = count + 1
@@ -1600,7 +1592,6 @@ function map_list_rooms (SearchData)
   end
 
   if ReturnList ~= 0 then 
-    --Note ("returned list.\n")
     return ReturnedRoomList
   end
   return {}
@@ -1627,7 +1618,7 @@ function map_list_rooms_extended (SearchData, ReturnAsList, SearchByArea)
     name = string.sub(RoomName,2,-2)
   end
 
-  SQLQuery = "SELECT rooms_lookup.uid as uid, rooms_lookup.name as name, "..
+  local SQLQuery = "SELECT rooms_lookup.uid as uid, rooms_lookup.name as name, "..
   "area FROM (select uid, name FROM rooms_lookup WHERE name LIKE %s) "..
   "AS rooms_lookup JOIN rooms ON rooms_lookup.uid = rooms.uid ORDER BY area LIMIT 101;"
   for row in dbnrowsWRAPPER(string.format (SQLQuery, fixsql (name))) do
@@ -1682,9 +1673,10 @@ function populate_room_list_with_area(SearchData)
   --SearchData == "areaname roomname"
   local _, _, SearchArea, RoomName = string.find(SearchData,"^(%w+)%s(.*)$")
   SearchArea = string.lower(SearchArea)
-  --if SearchArea == "here" then
-  --  SearchArea = some variable with the current area, may need to use a function
-  --end
+  if SearchArea == "here" then
+    local room = load_room_from_database(current_room)
+    SearchArea = room.area
+  end
   RoomListTable = map_list_rooms_extended(RoomName, 1, SearchArea)
   Note("+------------------------------ START OF SEARCH -------------------------------+\n")
   for count, RoomInfo in ipairs(RoomListTable) do
