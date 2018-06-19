@@ -1581,11 +1581,11 @@ function map_list_rooms (SearchData)
         Note(string.format("( %5d ) %-40s is in area \"%s\"\n",row.uid, row.name, row.area))
       else
         table.insert(ReturnedRoomList, row)
-        Note(string.format("%03d, ( %5d ) %-40s is in area \"%s\"\n",
-        count,
-        row["uid"],
-        row["name"],
-        row["area"]))
+        --Note(string.format("%03d, ( %5d ) %-40s is in area \"%s\"\n",
+        --count,
+        --row["uid"],
+        --row["name"],
+        --row["area"]))
       end
     end
     count = count + 1
@@ -1603,9 +1603,82 @@ function map_list_rooms (SearchData)
     --Note ("returned list.\n")
     return ReturnedRoomList
   end
+  return {}
 end -- map_list_rooms
 
+-- map_list_rooms function contributed by Spartacus
+function map_list_rooms_extended (SearchData, ReturnAsList, SearchedbyArea)
+  -- ok, so if I want to lookup a room in my db, I don't want it only if the mapper can find 
+  -- a sw in a certain # of rooms. if it is in the db, I want its vnum and area, so that I can 
+  -- figure out how to get there if the mapper does not know.
+  -- Now has the added functionality that it can return a table of room numbers if requested to.
+  local ReturnedRoomList = {}
+  local ReturnList = tonumber(ReturnAsList) or 0
+  local SearchArea = tostring(SearchedByArea) or ""
+  RoomName = RoomName:match("^%s*(.-)%s*$") 
+  local area = ""
+  local count = 1
+  if ReturnList  == 0 then
+    Note("+------------------------------ START OF SEARCH -------------------------------+\n")
+  end
+  -- find matching rooms using FTS3
+  local name = "%"..RoomName.."%"
+  if string.sub(RoomName,1,1) == "\"" and string.sub(RoomName,-1) == "\"" then
+    name = string.sub(RoomName,2,-2)
+  end
+
+  SQLQuery = "SELECT rooms_lookup.uid as uid, rooms_lookup.name as name, "..
+  "area FROM (select uid, name FROM rooms_lookup WHERE name LIKE %s) "..
+  "AS rooms_lookup JOIN rooms ON rooms_lookup.uid = rooms.uid ORDER BY area LIMIT 101;"
+  for row in dbnrowsWRAPPER(string.format (SQLQuery, fixsql (name))) do
+    if SearchArea == "" then
+      if count < 101 then
+        if ReturnList  == 0 then
+          Note(string.format("( %5d ) %-40s is in area \"%s\"\n",row.uid, row.name, row.area))
+        else
+          table.insert(ReturnedRoomList, row)
+        end
+      end
+      count = count + 1
+    elseif SearchArea == row.area then
+      if count < 101 then
+        if ReturnList  == 0 then
+          Note(string.format("( %5d ) %-40s is in area \"%s\"\n",row.uid, row.name, row.area))
+        else
+          table.insert(ReturnedRoomList, row)
+        end
+      end
+      count = count + 1
+    end
+  end   -- finding room
+  if count > 100 then
+    if ReturnList  == 0 then
+      Note(string.format("More than 100 search results found. Aborting query. Try a more specific search phrase than '%s'.\n",RoomName))
+    end
+  end
+  if ReturnList  == 0 then
+    Note("+-------------------------------- END OF SEARCH -------------------------------+\n")
+  end
+
+  if ReturnList ~= 0 then 
+    return ReturnedRoomList
+  end
+  return {}
+end -- map_list_rooms_extended
+
 function populate_room_list(RoomName)
+  RoomListTable = map_list_rooms("1 "..RoomName)
+  Note("+------------------------------ START OF SEARCH -------------------------------+\n")
+  for count, RoomInfo in ipairs(RoomListTable) do
+    Note(string.format("%03d, ( %5s ) %-40s is in \"%s\"\n",
+    count, RoomInfo["uid"], RoomInfo["name"], RoomInfo["area"]))
+    NumberOfFoundRooms = count
+  end
+  Note("+-------------------------------- END OF SEARCH -------------------------------+\n")
+  CurrentFoundRoom = 0
+end
+
+function populate_room_list_in_area(RoomName)
   RoomListTable = map_list_rooms("1 "..RoomName)
   Note("+------------------------------ START OF SEARCH -------------------------------+\n")
   for count, RoomInfo in ipairs(RoomListTable) do
@@ -1639,7 +1712,7 @@ function goto_listed_next()
     "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
     return
   end
-  if CurrentFoundRoom = 0 then
+  if CurrentFoundRoom == 0 then
     CurrentFoundRoom = 1
     Note("@WInitialising@w the room we are looking for.\n")
   end
@@ -1667,7 +1740,7 @@ function goto_listed_previous()
     "Please execute \".MapperPopulateRoomList\" with a valid roomname to populate the list.\n")
     return
   end
-  if CurrentFoundRoom = 0 then 
+  if CurrentFoundRoom == 0 then 
     Note("@WInitialising@w the room we are looking for.\n")
     CurrentFoundRoom = NumberOfFoundRooms
   end
