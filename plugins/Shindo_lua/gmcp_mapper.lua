@@ -617,6 +617,74 @@ function load_room_from_database (uid)
 
 end -- load_room_from_database
 
+function ExecuteWithWaits(cexit_command)
+  wait.make (function()
+    SendNoEcho("echo {begin running}")
+    local partial_cexit_command = cexit_command
+    local strbegin,strend = string.find(partial_cexit_command,";?wait%(%d*.?%d+%);?")
+    while strbegin do
+      strbegin,strend = string.find(partial_cexit_command,";?wait%(%d*.?%d+%);?")
+      if strbegin ~= nil and strbegin ~= 1 then
+        Execute(string.sub(partial_cexit_command,1,strbegin-1))
+      end
+      if strend then
+        local wait_time = tonumber(string.match(string.sub(partial_cexit_command,strbegin,strend),"wait%((%d*.?%d+)%)"))
+        SendNoEcho("echo {mapper_wait}wait("..wait_time..")")
+        line, wildcards = wait.regexp("^\\{mapper_wait\\}wait\\(([0-9]*\\.?[0-9]+)\\)",nil,trigger_flag.OmitFromOutput)
+        Note("CEXIT WAIT: waiting for "..wait_time.." seconds before continuing.")
+        BroadcastPlugin(999, "repaint")
+        wait.time(wait_time)
+        partial_cexit_command = string.sub(partial_cexit_command, strend+1)
+      end
+    end
+    Execute(partial_cexit_command)
+    SendNoEcho("echo {end running}")
+  end)
+end
+
+-- add_custom_exit function contributed by Spartacus
+function add_custom_exit (customexitcmd)
+
+  local remap = {
+    n = "north",
+    w = "west",
+    s = "south",
+    e = "east",
+    u = "up",
+    d = "down"
+  }
+  local _, _, cexit_dest, cexit_command = string.find(customexitcmd,"(%d+)%s(.*)")
+  local cexit_start
+
+  if cexit_dest == "" then
+    Note("we need a destination uid")
+    return
+  end
+  if cexit_command == "" then
+    Note("Nothing to do!")
+    return
+  end -- if cexit_command
+
+  if current_room then
+    cexit_start = current_room
+  else
+    Note("CEXIT FAILED: No room received from the mud yet. Try using the 'LOOK' command first.")
+    return
+  end -- if current_room
+
+  if cexit_start == "-1" then
+    Note ("CEXIT FAILED: You cannot link custom exits from unmappable rooms.")
+    return
+  end
+  dbCheckExecute(string.format ("INSERT OR REPLACE INTO exits (dir, fromuid, touid) VALUES (%s, %s, %s);",
+  fixsql  (cexit_command),  -- direction (eg. "n")
+  fixsql  (cexit_start),  -- from current room
+  fixsql  (cexit_dest) -- destination room
+  ))
+
+  SendToServer(cexit_command)
+end -- custom_exit
+
 last_area_requested = ""
 function save_room_to_database (uid,room)
   assert (uid, "No UID supplied to save_room_to_database")
@@ -674,104 +742,6 @@ function change_cexit_delay(temp_delay)
   end
   Note("CEXIT_DELAY: The next mapper custom exit will have ".. (temp_cexit_delay or BASE_CEXIT_DELAY) .." seconds to complete.\n")
 end
-
-function ExecuteWithWaits(cexit_command)
-  wait.make (function()
-    SendNoEcho("echo {begin running}")
-    local partial_cexit_command = cexit_command
-    local strbegin,strend = string.find(partial_cexit_command,";?wait%(%d*.?%d+%);?")
-    while strbegin do
-      strbegin,strend = string.find(partial_cexit_command,";?wait%(%d*.?%d+%);?")
-      if strbegin ~= nil and strbegin ~= 1 then
-        Execute(string.sub(partial_cexit_command,1,strbegin-1))
-      end
-      if strend then
-        local wait_time = tonumber(string.match(string.sub(partial_cexit_command,strbegin,strend),"wait%((%d*.?%d+)%)"))
-        SendNoEcho("echo {mapper_wait}wait("..wait_time..")")
-        line, wildcards = wait.regexp("^\\{mapper_wait\\}wait\\(([0-9]*\\.?[0-9]+)\\)",nil,trigger_flag.OmitFromOutput)
-        Note("CEXIT WAIT: waiting for "..wait_time.." seconds before continuing.")
-        BroadcastPlugin(999, "repaint")
-        wait.time(wait_time)
-        partial_cexit_command = string.sub(partial_cexit_command, strend+1)
-      end
-    end
-    Execute(partial_cexit_command)
-    SendNoEcho("echo {end running}")
-  end)
-end
-
--- custom_exit function contributed by Spartacus
-function custom_exit (cexit_cmd)
-
-  local remap = {
-    n = "north",
-    w = "west",
-    s = "south",
-    e = "east",
-    u = "up",
-    d = "down"
-  }
-  local cexit_command = cexit_cmd or ""
-  local cexit_start
-
-  if cexit_command == "" then
-    world.Note("Nothing to do!")
-    return
-  end -- if cexit_command
-
-  -- Note: Since the addition of the ignore_exits_mismatch room flag, I think this is no longer true.
-  --       Getting rid of the remap allows one to draw custom exit linkages between nomap rooms.
-  ------------------------------------
-  -- the current system makes standard letter exit (n,e,s,w,d,u) cexits not usable, so remap them
-  -- to their long word forms
-  --if remap[cexit_command] then
-  --   cexit_command = remap[cexit_command]
-  --end
-  if current_room then
-    cexit_start = current_room
-  else
-    world.Note("CEXIT FAILED: No room received from the mud yet. Try using the 'LOOK' command first.")
-    return
-  end -- if current_room
-
-  if cexit_start == "-1" then
-    world.Note ("CEXIT FAILED: You cannot link custom exits from unmappable rooms.")
-    return
-  end
-
-  wait.make (function()
-    local cexit_delay = temp_cexit_delay or BASE_CEXIT_DELAY
-    local added_waits = 0
-    for wait_secs in string.gmatch(cexit_command, "wait%((%d*.?%d+)%)") do
-      added_waits = added_waits + tonumber(wait_secs)
-    end
-    world.Note("CEXIT: WAIT FOR CONFIRMATION BEFORE MOVING.\nThis should take about "..cexit_delay+added_waits.." seconds"..(((added_waits ~= 0) and " (includes "..added_waits.." seconds in added waits)") or "")..".")
-    BroadcastPlugin(999, "repaint")
-    ExecuteWithWaits(cexit_command)
-
-    wait.time(cexit_delay+added_waits)
-    temp_cexit_delay = nil
-    cexit_dest = current_room
-    if cexit_dest then
-      if cexit_dest == "-1" then
-        world.Note ("CEXIT FAILED: You cannot link custom exits to unmappable rooms.")
-      elseif cexit_dest ~= cexit_start then
-        world.Note (string.format("Custom Exit CONFIRMED: %s (%s) -> %s", cexit_start, cexit_command, cexit_dest))
-        dbCheckExecute(string.format ("INSERT OR REPLACE INTO exits (dir, fromuid, touid) VALUES (%s, %s, %s);",
-        fixsql  (cexit_command),  -- direction (eg. "n")
-        fixsql  (cexit_start),  -- from current room
-        fixsql  (cexit_dest) -- destination room
-        ))
-        rooms[cexit_start].exits[cexit_command] = cexit_dest
-        rooms[cexit_start].exit_locks[cexit_command] = "0"
-      else
-        world.Note (string.format("CEXIT FAILED: Custom Exit %s leads back here!", cexit_command))
-      end
-    else
-      world.Note ("CEXIT FAILED: Need to know where we ended up.")
-    end
-  end)
-end -- custom_exit
 
 function map_areas (areas)
   local line = ""
@@ -1906,6 +1876,7 @@ RegisterSpecialCommand("MapperListAreas","map_areas")
 RegisterSpecialCommand("MapperListRooms","map_list_rooms")
 RegisterSpecialCommand("MapperWhere","map_where_uid")
 --Mapper Cexit functions
+RegisterSpecialCommand("MapperCExitAdd","add_custom_exit")
 --Mapper Portal functions
 RegisterSpecialCommand("MapperPortalAdd","map_portal_add")
 RegisterSpecialCommand("MapperPortalList","map_portal_list")
