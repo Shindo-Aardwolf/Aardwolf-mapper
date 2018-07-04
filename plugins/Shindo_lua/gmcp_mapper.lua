@@ -93,6 +93,12 @@ local valid_direction = {
   w = "w",
   u = "u",
   d = "d",
+  N = "n",
+  S = "s",
+  E = "e",
+  W = "w",
+  U = "u",
+  D = "d",
   north = "n",
   south = "s",
   east = "e",
@@ -642,9 +648,55 @@ function ExecuteWithWaits(cexit_command)
   end)
 end
 
--- add_custom_exit function contributed by Spartacus
-function add_custom_exit (customexitcmd)
+function custom_exits_delete ()
+  local query = string.format("delete from exits where fromuid=%s and dir not in ('n','s','e','w','d','u');", fixsql(current_room))
+  dbCheckExecute(query)
+  for k,v in pairs(rooms[current_room].exits) do
+    if not directions[k] then
+      Note(string.format("Found custom exit \"%s\" to room %s \"%s\".\n",
+      k,
+      rooms[current_room].exits[k],
+      rooms[rooms[current_room].exits[k]].name))
+      --Note("Found custom exit \""..k.."\" to room "..rooms[current_room].exits[k].." \""..rooms[rooms[current_room].exits[k]].name.."\"")
+      rooms[current_room].exits[k] = nil
+      rooms[current_room].exit_locks[k] = nil
+    end
+  end
+  Note("Removed custom exits from the current room.")
+end
 
+-- this function adds a command to open a door go in its direction and then close it unless 
+-- specificily instructed not to.
+-- It uses the gmcp information from the current room to determine the destination room.
+function custom_exits_add_door (doordirection)
+  local _, _, DoorDir, LeaveDoorOpen = string.find(doordirection,"([nNsSeEwWuUdD])%s?(%d?)")
+  if DoorDir == nil then
+    Note("This function requires a direction as part of the input, n, e, s, w, u or d.\n")
+    return
+  end
+  room = rooms[current_room]
+  cexit_dest = room.exits[valid_direction[DoorDir]]
+  if LeaveDoorOpen == "1" then
+    cexit_command = string.format("%s;%s",
+    DoorDir,
+    DoorDir)
+  else
+    cexit_command = string.format("open %s;%s;close %s",
+    DoorDir,
+    DoorDir,
+    inverse_direction[DoorDir])
+  end
+  Note(
+  string.format ("INSERT OR REPLACE INTO exits (dir, fromuid, touid) VALUES (%s, %s, %s);",
+  fixsql (cexit_command),  -- direction (eg. "n")
+  fixsql (current_room),  -- from current room
+  fixsql (cexit_dest) -- destination room
+  )
+  .."\n")
+end -- custom_exits_add_door
+
+-- custom_exits_add function contributed by Spartacus
+function custom_exits_add (customexitcmd)
   local remap = {
     n = "north",
     w = "west",
@@ -677,13 +729,13 @@ function add_custom_exit (customexitcmd)
     return
   end
   dbCheckExecute(string.format ("INSERT OR REPLACE INTO exits (dir, fromuid, touid) VALUES (%s, %s, %s);",
-  fixsql  (cexit_command),  -- direction (eg. "n")
-  fixsql  (cexit_start),  -- from current room
-  fixsql  (cexit_dest) -- destination room
+  fixsql (cexit_command),  -- direction (eg. "n")
+  fixsql (cexit_start),  -- from current room
+  fixsql (cexit_dest) -- destination room
   ))
 
   SendToServer(cexit_command)
-end -- custom_exit
+end -- custom_exits_add
 
 last_area_requested = ""
 function save_room_to_database (uid,room)
@@ -923,9 +975,10 @@ function save_room_exits(uid,GMCPRoomData)
         dbCheckExecute (string.format ([[
         INSERT OR REPLACE INTO exits (dir, fromuid, touid)
         VALUES (%s, %s, %s);
-        ]], fixsql  (dir),  -- direction (eg. "n")
-        fixsql  (uid),  -- from current room
-        fixsql  (touid) -- destination room
+        ]],
+        fixsql (dir),  -- direction (eg. "n")
+        fixsql (uid),  -- from current room
+        fixsql (touid) -- destination room
         ))
 
         if show_database_mods then
@@ -1009,10 +1062,10 @@ function create_portal(keyword, destination, level)
   Note(string.format("Storing '%s' as a portal to %s.\n", keyword, destination))
   Note(string.format("\nPortal given minimum level lock of %s.\n", level))
   query = string.format ("INSERT OR REPLACE INTO exits (dir, fromuid, touid, level) VALUES (%s, %s, %s, %s);",
-  fixsql  (keyword),
-  fixsql  ("*"),           -- from anywhere
-  fixsql  (destination),
-  fixsql(level) -- minimum level of the portal
+  fixsql (keyword),
+  fixsql ("*"),           -- from anywhere
+  fixsql (destination),
+  fixsql (level) -- minimum level of the portal
   )
   dbCheckExecute(query)
 end
@@ -1471,9 +1524,9 @@ function fix_up_exit ()
   local room = rooms [from_room]
 
   dbCheckExecute(string.format ("UPDATE exits SET touid = %s WHERE fromuid = %s AND dir = %s;",
-  fixsql  (current_room),     -- destination room
-  fixsql  (from_room),       -- from previous room
-  fixsql  (last_direction_moved)  -- direction (eg. "n")
+  fixsql (current_room),     -- destination room
+  fixsql (from_room),       -- from previous room
+  fixsql (last_direction_moved)  -- direction (eg. "n")
   ))
 
   --   if show_database_mods then
@@ -1729,6 +1782,60 @@ function goto_listed_previous()
   map_goto(tonumber(RoomListTable[CurrentFoundRoom].uid))
 end
 
+function custom_exits_list (searcharea)
+  local line = ""
+  local count = 0
+  local query
+
+  area = Trim(searcharea or "")
+  query = string.format("select uid, name, area, dir, touid from rooms inner join exits on rooms.uid = fromuid where lower(area) like %s and dir not in ('n','s','e','w','d','u') and fromuid not in ('*','**') order by area, uid", fixsql("%" .. area .. "%"))
+
+  if area == "" then
+    intro = "The following rooms have custom exits:\n"
+  else
+    if area == "here" then
+      if current_room and gmcproom.area then
+        area = gmcproom.area
+      else
+        Note("CEXITS HERE ERROR: The mapper doesn't know where you are. Type 'LOOK' and try again.\n")
+        return
+      end
+      query = string.format("select uid, name, area, dir, touid from rooms inner join exits on rooms.uid = fromuid where lower(area) is %s and dir not in ('n','s','e','w','d','u') and fromuid not in ('*','**') order by uid", fixsql(area))
+      intro = "The following rooms in the current area have custom exits:"
+    elseif area == "thisroom" then
+      if not current_room then
+        Note("CEXITS THISROOM ERROR: The mapper doesn't know where you are. Type 'LOOK' and try again.\n")
+        return
+      end
+      query = string.format("select uid, name, area, dir, touid from rooms inner join exits on rooms.uid = fromuid where fromuid=%s and dir not in ('n','s','e','w','d','u')", fixsql(current_room))
+      intro = "The following custom exits are in this room:\n"
+    else
+      intro = string.format("The following rooms in areas partially matching '%s' have custom exits:\n",area)
+    end
+  end
+
+  hr = "| area       | room name            | rm uid  | dir            | to uid  |\n"
+  hl = "+------------+----------------------+---------+----------------+---------+\n"
+
+  -- area - room name - room uid - direction - destination uid
+  fmt = "| %10.10s | %-20.20s | %7.7s | %-14.14s | %7.7s |\n"
+  Note ("\n"..intro)
+  Note (hl)
+  Note (hr)
+  Note (hl)
+  for row in dbnrowsWRAPPER(query) do
+    line = string.format(fmt,row.area, row.name, row.uid, row.dir, row.touid)
+    Note(line)
+    --[[Hyperlink(string.format("mapper goto %s",row.uid), line, string.format("%s",row.dir), "", "", false, NoUnderline_hyperlinks)
+    print("")
+    ]]
+    count = count + 1
+  end -- custom exits query
+  Note (hl)
+  line = string.format ("Found %s custom exits.\n", count)
+  Note (line.."\n")
+end -- custom_exits_list
+
 function create_tables ()
   -- create rooms table
   dbCheckExecute([[
@@ -1876,7 +1983,10 @@ RegisterSpecialCommand("MapperListAreas","map_areas")
 RegisterSpecialCommand("MapperListRooms","map_list_rooms")
 RegisterSpecialCommand("MapperWhere","map_where_uid")
 --Mapper Cexit functions
-RegisterSpecialCommand("MapperCExitAdd","add_custom_exit")
+RegisterSpecialCommand("MapperCExitAdd","custom_exits_add")
+RegisterSpecialCommand("MapperCExitAddDoor","custom_exits_add_door")
+RegisterSpecialCommand("MapperCExitDelete","custom_exits_delete")
+RegisterSpecialCommand("MapperCExitList","custom_exits_list")
 --Mapper Portal functions
 RegisterSpecialCommand("MapperPortalAdd","map_portal_add")
 RegisterSpecialCommand("MapperPortalList","map_portal_list")
