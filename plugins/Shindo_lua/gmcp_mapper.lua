@@ -168,7 +168,6 @@ areacount = 0
 coordcount = 0
 directioncount = 0
 environmentcount = 0
-directions = {}
 
 -- This Section contains all the functions we need to manipulate strings, numbers and tables
 function compareTables(primary, secondary)
