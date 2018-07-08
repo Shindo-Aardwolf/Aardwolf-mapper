@@ -694,6 +694,7 @@ function custom_exits_add_door (doordirection)
   )
   --.."\n")
   dbCheckExecute(query)
+  SendToServer(cexit_command)
   ---[[
   Note(string.format("Adding custom exit:\"%s\" from %s to %s.\n",
   fixsql (cexit_command),  -- direction (eg. "n")
