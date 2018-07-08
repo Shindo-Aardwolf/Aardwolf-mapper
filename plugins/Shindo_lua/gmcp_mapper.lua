@@ -685,13 +685,22 @@ function custom_exits_add_door (doordirection)
     DoorDir,
     inverse_direction[DoorDir])
   end
-  Note(
+  local query =
+  --Note(
   string.format ("INSERT OR REPLACE INTO exits (dir, fromuid, touid) VALUES (%s, %s, %s);",
   fixsql (cexit_command),  -- direction (eg. "n")
   fixsql (current_room),  -- from current room
   fixsql (cexit_dest) -- destination room
   )
-  .."\n")
+  --.."\n")
+  dbCheckExecute(query)
+  ---[[
+  Note(string.format("Adding custom exit:\"%s\" from %s to %s.\n",
+  fixsql (cexit_command),  -- direction (eg. "n")
+  fixsql (current_room),  -- from current room
+  fixsql (cexit_dest) -- destination room
+  ))
+  --]]
 end -- custom_exits_add_door
 
 -- custom_exits_add function contributed by Spartacus
