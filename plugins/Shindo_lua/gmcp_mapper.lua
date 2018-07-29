@@ -1171,7 +1171,6 @@ function got_gmcp_room(GMCPRoomData)
 
   if shownotes and room and room.notes and room.notes ~= "" then
     Note(string.format("%s*** MAPPER NOTE *** -> %s%s%s\n", bcyan, dcyan, room.notes, dwhite))
-    --AnsiNote(ColoursToANSI("@x033*** MAPPER NOTE *** -> "..room.notes.."@w"..check_compact))
   end
 
   -- re-save if we got information that is different than before
@@ -1198,7 +1197,7 @@ function got_gmcp_room(GMCPRoomData)
       map_purgeroom (nilToStr(room_number), gmcproom.area)
     else
       -- brand new area
-      --         print("new area")
+      Note(string.format"%snew area.%s\n", bwhite, nwhite))
       gmcproom.exits = {}
       gmcproom.exit_locks = {}
       gmcproom.notes = ""
@@ -1230,7 +1229,6 @@ end
 function check_we_can_find ()
   if not current_room then
     Note("I don't know where you are right now - try: LOOK\n")
-    --check_connected ()
     return false
   end
   if current_speedwalk then
@@ -1341,10 +1339,7 @@ function findpath(src, dst, noportals, norecalls)
   table.insert(rooms_list, fixsql(dst))
 
   local visited = ""
-  --local main_status = GetInfo(53)
   while not found and depth < max_depth do
-    --SetStatus(main_status.." (searching depth "..depth..")")
-    --BroadcastPlugin (999, "repaint")
     depth = depth + 1
     if depth > 1 then
       ftd = room_sets[depth-1] or {}
@@ -1450,14 +1445,7 @@ function findpath(src, dst, noportals, norecalls)
 end -- function findpath
 
 function build_speedwalk (path, prefix)
-
   stack_char = ";"
-  --   if GetOption("enable_command_stack")==1 then
-  --      stack_char = GetAlphaOption("command_stack_character")
-  --   else
-  --      stack_char = "\r\n"
-  --   end
-
   -- build speedwalk string (collect identical directions)
   local tspeed = {}
   for _, dir in ipairs (path) do
