@@ -1,5 +1,32 @@
 --All the required modules loaded here
 require("luabins")
+local version = "0.1.1"
+
+-- Colour Stuff
+local ansi = "\27["
+local dred = "\27[0;31m"
+local dgreen = "\27[0;32m"
+local dyellow = "\27[0;33m"
+local dblue = "\27[0;34m"
+local dmagenta = "\27[0;35m"
+local dcyan = "\27[0;36m"
+local dwhite = "\27[0;37m"
+local bred = "\27[31;1m"
+local bgreen = "\27[32;1m"
+local byellow = "\27[33;1m"
+local bblue = "\27[34;1m"
+local bmagenta = "\27[35;1m"
+local bcyan = "\27[36;1m"
+local bwhite = "\27[37;1m"
+
+-- Strip all color codes from a string
+function strip_colours (s)
+   s = s:gsub("@@", "\0")  -- change @@ to 0x00
+   s = s:gsub("@%-", "~")    -- fix tildes (historical)
+   s = s:gsub("@x%d?%d?%d?", "") -- strip valid and invalid xterm color codes
+   s = s:gsub("@.([^@]*)", "%1") -- strip normal color codes and hidden garbage
+   return (s:gsub("%z", "@")) -- put @ back (has parentheses on purpose)
+end -- strip_colours
 
 -- This Section handles all the database calls to open close etc
 require("lsqlite3")
@@ -85,6 +112,7 @@ local max_depth = 200
 local RoomListTable = {}
 local NumberOfFoundRooms = 0
 local CurrentFoundRoom = 0
+local shownotes = 1
 
 local valid_direction = {
   n = "n",
@@ -1142,7 +1170,8 @@ function got_gmcp_room(GMCPRoomData)
   if not compact_mode then check_compact = "\n" end
 
   if shownotes and room and room.notes and room.notes ~= "" then
-    AnsiNote(ColoursToANSI("@x033*** MAPPER NOTE *** -> "..room.notes.."@w"..check_compact))
+    Note(string.format("%s*** MAPPER NOTE *** -> %s%s%s\n", bcyan, dcyan, room.notes, dwhite))
+    --AnsiNote(ColoursToANSI("@x033*** MAPPER NOTE *** -> "..room.notes.."@w"..check_compact))
   end
 
   -- re-save if we got information that is different than before
@@ -1744,7 +1773,7 @@ function goto_listed_next()
   end
   if CurrentFoundRoom == 0 then
     CurrentFoundRoom = 1
-    Note("@WInitialising@w the room we are looking for.\n")
+    Note("Initialising the room we are looking for.\n")
   end
   if CurrentFoundRoom < 1 then
     CurrentFoundRoom = 1
@@ -1771,7 +1800,7 @@ function goto_listed_previous()
     return
   end
   if CurrentFoundRoom == 0 then 
-    Note("@WInitialising@w the room we are looking for.\n")
+    Note("Initialising the room we are looking for.\n")
     CurrentFoundRoom = NumberOfFoundRooms
   end
   if CurrentFoundRoom > NumberOfFoundRooms then
@@ -1835,7 +1864,8 @@ function custom_exits_list (searcharea)
   for row in dbnrowsWRAPPER(query) do
     line = string.format(fmt,row.area, row.name, row.uid, row.dir, row.touid)
     Note(line)
-    --[[Hyperlink(string.format("mapper goto %s",row.uid), line, string.format("%s",row.dir), "", "", false, NoUnderline_hyperlinks)
+    --[[
+    Hyperlink(string.format("mapper goto %s",row.uid), line, string.format("%s",row.dir), "", "", false, NoUnderline_hyperlinks)
     print("")
     ]]
     count = count + 1
@@ -1940,11 +1970,11 @@ function set_mytier(sent_value)
       mytier = tonumber(sent_value)
     else
       mytier = 0
-      Note("Please select a level from 0 to 9. mytier set to 0.\n")
+      Note("Please select a level from 0 to 9. Your tier has been set to 0.\n")
     end
   else
     mytier = 0
-    Note("We do not have a valid tier for your character. It has defaulted to 0.\n")
+    Note("We do not have a valid tier for your character. Your tier has been set to 0.\n")
   end
 end
 
@@ -1954,7 +1984,7 @@ function set_mylevel(sent_value)
       mylevel = tonumber(sent_value)
     else
       mylevel = 0
-      Note("Please select a level from 1 to 210. mylevel set to 0.\n")
+      Note("Please select a level from 1 to 210. Your level has been set to 0.\n")
     end
   else
     mylevel = 0
@@ -1968,16 +1998,24 @@ function processGMCPRoom(CapturedStuff)
 end
 
 function OnBackgroundStartup()
+  Note(string.format("%sGMCP %sMapper plugin%s version: %s%s%s\n", dgreen, dred, dwhite, dyellow, version, dwhite))
+  Note(string.format("%sYou are using sqlite3 version: %s%s%s\n", dgreen, bgreen, sqlite3.version(), dwhite))
+  -- we need to check if the db file exists and if it has all the tables in it
+  local DBTest = sqlite3.open(dbPath)
+  if DBTest:errcode() ~= 0 then
+    Note(string.format("%serror code: %s%s%s\nWe had the following error when trying to open the database: %s%s%s\n",
+    dred, bred, DBTest:errcode(), dwhite,
+    bred, DBTest:errmsg(), dwhite))
+  else
+    Note(string.format("%sDB created or it already existed.\n%s", dgreen, dwhite))
+    Note(string.format("%sPlease note that this does not mean it has tables in it.%s\n",byellow,dwhite))
+    Note(string.format("%sIf you see %sno such table: areas%s then run %s.MapperSetup.%s\n",
+    byellow, dred, byellow, bgreen, bwhite))
+  end
+  DBTest:close()
+  Note(string.format("gmcp_mapper startup completed.\n"))
   --Send_GMCP_Packet("rawcolor on")
 end
-
-function OnPluginConnect ()
-  if not db:isopen() then
-    maybe_Note("GMCP Mapper: Reconnected; opening map database.")
-    db = assert (sqlite3.open(dbPath))
-  end
-  --Send_GMCP_Packet("rawcolor on")
-end -- OnPluginConnect
 
 function PrepGMCP()
   --Send_GMCP_Packet("rawcolor on")
@@ -2015,5 +2053,3 @@ RegisterSpecialCommand("MapperGotoListNumber","goto_listed_number")
 RegisterSpecialCommand("MapperGotoListNext","goto_listed_next")
 RegisterSpecialCommand("MapperGotoListPrevious","goto_listed_previous")
 
-
-Note("GMCP Mapper plugin startup\n")
