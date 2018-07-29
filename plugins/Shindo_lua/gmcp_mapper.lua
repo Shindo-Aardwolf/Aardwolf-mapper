@@ -1,6 +1,6 @@
 --All the required modules loaded here
 require("luabins")
-local version = "0.1.1"
+local version = "0.2.1"
 
 -- Colour Stuff
 local ansi = "\27["
@@ -1120,8 +1120,8 @@ function got_gmcp_room(GMCPRoomData)
   end
 
   gmcproom = {
-    --name = strip_colours(GMCPRoomData.name),
-    name = GMCPRoomData.name,
+    name = strip_colours(GMCPRoomData.name),
+    --name = GMCPRoomData.name,
     area = GMCPRoomData.zone,
     building = 0,
     terrain = GMCPRoomData.terrain,
@@ -2014,7 +2014,7 @@ function OnBackgroundStartup()
   end
   DBTest:close()
   Note(string.format("gmcp_mapper startup completed.\n"))
-  --Send_GMCP_Packet("rawcolor on")
+  Send_GMCP_Packet("rawcolor on")
 end
 
 function PrepGMCP()
