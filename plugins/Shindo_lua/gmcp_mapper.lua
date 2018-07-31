@@ -2000,7 +2000,7 @@ end
 function OnBackgroundStartup()
   Note(string.format("%sGMCP %sMapper plugin%s version: %s%s%s\n", dgreen, dred, dwhite, dyellow, version, dwhite))
   Note(string.format("%sYou are using sqlite3 version: %s%s%s\n", dgreen, bgreen, sqlite3.version(), dwhite))
-  -- we need to check if the db file exists and if it has all the tables in it
+  -- we need to check if the can create the db file, if it doesn't exist
   local DBTest = sqlite3.open(dbPath)
   if DBTest:errcode() ~= 0 then
     Note(string.format("%serror code: %s%s%s\nWe had the following error when trying to open the database: %s%s%s\n",
