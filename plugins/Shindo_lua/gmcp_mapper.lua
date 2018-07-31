@@ -298,23 +298,25 @@ function mark_prison_flag()
   flagType = nil
 end
 
-function map_bounceportal (name, line, wildcards)
-  wildcards[1] = Trim(wildcards[1])
-  if wildcards[1]=="" then
+PORTALS_QUERY = [=[select rooms.area,rooms.name,exits.touid,exits.fromuid,exits.dir,exits.level from exits left outer join rooms on rooms.uid=exits.touid where exits.fromuid in ('*','**') order by rooms.area,exits.touid]=]
+
+function map_bounceportal (portalIndex)
+  portalIndex = Trim(portalIndex) or ""
+  if portalIndex == "" then
     if bounce_portal and bounce_portal.dir then
       Note("\nBOUNCEPORTAL: Currently set to '"..bounce_portal.dir.."'")
     else
       Note("\nBOUNCEPORTAL: Not currently set.")
     end
     return
-  elseif wildcards[1]=="clear" then
+  elseif portalIndex == "clear" then
     bounce_portal = nil
     Note("\nBOUNCEPORTAL: cleared.")
     dbCheckExecute(string.format("DELETE from storage where name is %s;", fixsql("bounce_portal")))
     return
   end
 
-  local pnum = tonumber(wildcards[1])
+  local pnum = tonumber(portalIndex)
 
   if pnum==nil then
     Note("\nBOUNCEPORTAL FAILED: The required parameter for mapper bounceportal is <portal_index>.\n"..
@@ -328,13 +330,15 @@ function map_bounceportal (name, line, wildcards)
     if count == pnum then
       if row.fromuid == "*" then
         bounce_portal = {dir=row.dir, uid=row.touid}
-        Note("\nBOUNCEPORTAL: Set portal #"..count.." ("..row.dir..") as the bounce portal for portal-friendly norecall rooms.")
+        Note("\nBOUNCEPORTAL: Set portal #"..count.." ("..row.dir..") as the bounce portal for portal-friendly norecall rooms.\n")
+        --[[
         dbCheckExecute(string.format("INSERT OR REPLACE INTO storage (name, data) VALUES (%s,%s);", 
         fixsql("bounce_portal"), 
         fixsql(serialize.save("bounce_portal"))))
+        --]]
       else
         Note("\nBOUNCEPORTAL FAILED: Portal #"..pnum.." is a recall portal.\n"..
-        "You must choose a mapper portal that does not use either the recall or home commands for the bounce portal.")
+        "You must choose a mapper portal that does not use either the recall or home commands for the bounce portal.\n")
       end
       found = true
     end
@@ -345,8 +349,6 @@ function map_bounceportal (name, line, wildcards)
     pnum))
   end
 end
-
-PORTALS_QUERY = [=[select rooms.area,rooms.name,exits.touid,exits.fromuid,exits.dir,exits.level from exits left outer join rooms on rooms.uid=exits.touid where exits.fromuid in ('*','**') order by rooms.area,exits.touid]=]
 
 function map_bouncerecall (recallIndex)
   recallIndex = Trim(recallIndex) or ""
@@ -2093,6 +2095,7 @@ RegisterSpecialCommand("MapperCExitList","custom_exits_list")
 RegisterSpecialCommand("MapperPortalAdd","map_portal_add")
 RegisterSpecialCommand("MapperPortalRecall","map_portal_recall")
 RegisterSpecialCommand("MapperPortalBounceRecall","map_bouncerecall")
+RegisterSpecialCommand("MapperPortalBouncePortal","map_bounceportal")
 RegisterSpecialCommand("MapperPortalList","map_portal_list")
 RegisterSpecialCommand("MapperPortalDelete","map_portal_delete")
 --Mapper Movement functions
