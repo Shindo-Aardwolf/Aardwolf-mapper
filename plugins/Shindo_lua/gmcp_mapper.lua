@@ -1,6 +1,6 @@
 --All the required modules loaded here
 require("serialize")
-local version = "0.1.1"
+local version = "0.2.1"
 
 -- Colour Stuff
 local ansi = "\27["
@@ -2043,6 +2043,7 @@ end
 
 function OnBackgroundStartup()
   Note(string.format("%sGMCP %sMapper plugin%s version: %s%s%s\n", dgreen, dred, dwhite, dyellow, version, dwhite))
+  Note(string.format("%sThis version of the mapper sets gmcp to use %s\"rawcolor on\"%s.\nIf this causes problems with any other plugins you are using please contact me.", dwhite, dgreen, dwhite))
   Note(string.format("%sYou are using sqlite3 version: %s%s%s\n", dgreen, bgreen, sqlite3.version(), dwhite))
   -- we need to check if the can create the db file, if it doesn't exist
   local DBTest = sqlite3.open(dbPath)
