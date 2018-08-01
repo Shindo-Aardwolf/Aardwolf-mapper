@@ -1,6 +1,6 @@
 --All the required modules loaded here
-require("luabins")
-local version = "0.2.1"
+require("serialize")
+local version = "0.1.1"
 
 -- Colour Stuff
 local ansi = "\27["
@@ -21,11 +21,11 @@ local bwhite = "\27[37;1m"
 
 -- Strip all color codes from a string
 function strip_colours (s)
-   s = s:gsub("@@", "\0")  -- change @@ to 0x00
-   s = s:gsub("@%-", "~")    -- fix tildes (historical)
-   s = s:gsub("@x%d?%d?%d?", "") -- strip valid and invalid xterm color codes
-   s = s:gsub("@.([^@]*)", "%1") -- strip normal color codes and hidden garbage
-   return (s:gsub("%z", "@")) -- put @ back (has parentheses on purpose)
+  s = s:gsub("@@", "\0")  -- change @@ to 0x00
+  s = s:gsub("@%-", "~")    -- fix tildes (historical)
+  s = s:gsub("@x%d?%d?%d?", "") -- strip valid and invalid xterm color codes
+  s = s:gsub("@.([^@]*)", "%1") -- strip normal color codes and hidden garbage
+  return (s:gsub("%z", "@")) -- put @ back (has parentheses on purpose)
 end -- strip_colours
 
 -- This Section handles all the database calls to open close etc
@@ -113,6 +113,9 @@ local RoomListTable = {}
 local NumberOfFoundRooms = 0
 local CurrentFoundRoom = 0
 local shownotes = 1
+
+local bounce_recall = nil
+local bounce_portal = nil
 
 local valid_direction = {
   n = "n",
@@ -294,23 +297,25 @@ function mark_prison_flag()
   flagType = nil
 end
 
-function map_bounceportal (name, line, wildcards)
-  wildcards[1] = Trim(wildcards[1])
-  if wildcards[1]=="" then
+PORTALS_QUERY = [=[select rooms.area,rooms.name,exits.touid,exits.fromuid,exits.dir,exits.level from exits left outer join rooms on rooms.uid=exits.touid where exits.fromuid in ('*','**') order by rooms.area,exits.touid]=]
+
+function map_bounceportal (portalIndex)
+  portalIndex = Trim(portalIndex) or ""
+  if portalIndex == "" then
     if bounce_portal and bounce_portal.dir then
       Note("\nBOUNCEPORTAL: Currently set to '"..bounce_portal.dir.."'")
     else
       Note("\nBOUNCEPORTAL: Not currently set.")
     end
     return
-  elseif wildcards[1]=="clear" then
+  elseif portalIndex == "clear" then
     bounce_portal = nil
     Note("\nBOUNCEPORTAL: cleared.")
     dbCheckExecute(string.format("DELETE from storage where name is %s;", fixsql("bounce_portal")))
     return
   end
 
-  local pnum = tonumber(wildcards[1])
+  local pnum = tonumber(portalIndex)
 
   if pnum==nil then
     Note("\nBOUNCEPORTAL FAILED: The required parameter for mapper bounceportal is <portal_index>.\n"..
@@ -324,13 +329,15 @@ function map_bounceportal (name, line, wildcards)
     if count == pnum then
       if row.fromuid == "*" then
         bounce_portal = {dir=row.dir, uid=row.touid}
-        Note("\nBOUNCEPORTAL: Set portal #"..count.." ("..row.dir..") as the bounce portal for portal-friendly norecall rooms.")
+        Note("\nBOUNCEPORTAL: Set portal #"..count.." ("..row.dir..") as the bounce portal for portal-friendly norecall rooms.\n")
+        --[[
         dbCheckExecute(string.format("INSERT OR REPLACE INTO storage (name, data) VALUES (%s,%s);", 
         fixsql("bounce_portal"), 
         fixsql(serialize.save("bounce_portal"))))
+        --]]
       else
         Note("\nBOUNCEPORTAL FAILED: Portal #"..pnum.." is a recall portal.\n"..
-        "You must choose a mapper portal that does not use either the recall or home commands for the bounce portal.")
+        "You must choose a mapper portal that does not use either the recall or home commands for the bounce portal.\n")
       end
       found = true
     end
@@ -342,27 +349,23 @@ function map_bounceportal (name, line, wildcards)
   end
 end
 
-PORTALS_QUERY = "select rooms.area,rooms.name,exits.touid,exits.fromuid,exits.dir,exits.level from exits left outer join rooms on rooms.uid=exits.touid where exits.fromuid in ('*','**') order by rooms.area,exits.touid"
-
-function map_bouncerecall (name, line, wildcards)
-  wildcards[1] = Trim(wildcards[1])
-  if wildcards[1]=="" then
+function map_bouncerecall (recallIndex)
+  recallIndex = Trim(recallIndex) or ""
+  if recallIndex == "" then
     if bounce_recall and bounce_recall.dir then
-      Note("\nBOUNCERECALL: Currently set to '"..bounce_recall.dir.."'")
+      Note("BOUNCERECALL: Currently set to '"..bounce_recall.dir.."'\n")
     else
-      Note("\nBOUNCERECALL: Not currently set.")
+      Note("BOUNCERECALL: Not currently set.\n")
     end
     return
-  elseif wildcards[1]=="clear" then
+  elseif recallIndex == "clear" then
     bounce_recall = nil
-    Note("\nBOUNCERECALL: cleared.")
+    Note("BOUNCERECALL: cleared.\n")
     dbCheckExecute(string.format("DELETE from storage where name is %s;", fixsql("bounce_recall")))
     return
   end
 
-
-  local pnum = tonumber(wildcards[1])
-
+  local pnum = tonumber(recallIndex)
   if pnum==nil then
     Note("\nBOUNCERECALL FAILED: The required parameter for mapper bouncerecall is <recall_portal_index>.\n"..
     "Current portal indexes can be found in the 'mapper portals' output.\n")
@@ -375,20 +378,22 @@ function map_bouncerecall (name, line, wildcards)
     if count == pnum then
       if row.fromuid == "**" then
         bounce_recall = {dir=row.dir, uid=row.touid}
-        Note("\nBOUNCERECALL: Set recall portal #"..pnum.." ("..row.dir..") as the bounce recall for recall-friendly noportal rooms.")
+        Note("BOUNCERECALL: Set recall portal #"..pnum.." ("..row.dir..") as the bounce recall for recall-friendly noportal rooms.\n")
+        --[[
         dbCheckExecute(string.format("INSERT OR REPLACE INTO storage (name, data) VALUES (%s,%s);",
         fixsql("bounce_recall"), 
         fixsql(serialize.save("bounce_recall"))))
+        --]]
       else
-        Note("\nBOUNCERECALL FAILED: Portal #"..pnum..
-        " is not a recall portal. You must choose a mapper portal that uses either the recall or home commands for the bounce recall.")
+        Note("BOUNCERECALL FAILED: Portal #"..pnum..
+        " is not a recall portal.\n You must choose a mapper portal that uses either the recall or home commands for the bounce recall.\n")
       end
       found = true
     end
     count = count + 1
   end
   if found == false then
-    Note(string.format("\nBOUNCERECALL FAILED: Did not find index %s in the list of portals. Try 'mapper portals' to see the list.\n", pnum))
+    Note(string.format("BOUNCERECALL FAILED: Did not find index %s in the list of portals.\n Try .MapperPortalList to see the list.\n", pnum))
   end
 end
 
@@ -1049,6 +1054,57 @@ function update_gmcp_sectors(GMCPSectorData)
   end -- finding environments
 end
 
+function map_portal_recall (portalIndex)
+  -- flag a portal as using "recall"
+  local query = "INSERT OR REPLACE INTO rooms (uid, name, area) VALUES ('**', '___HERE___', '___EVERYWHERE___')"
+  dbCheckExecute(query)
+
+  local pnum = tonumber(portalIndex)
+
+  if pnum==nil then
+    Note("\nPORTALRECALL FAILED: The required parameter for .MapperPortalRecall is <portal_index>.\nCurrent portal indexes can be found by using the .MapperPortalList command.\n")
+    return
+  end
+
+  local count = 1
+  local found = false
+  for row in dbnrowsWRAPPER(PORTALS_QUERY) do
+    if count == pnum then
+
+      -- toggle between '*' and '**'
+      query = string.format ([[
+      INSERT OR REPLACE INTO exits (dir, fromuid, touid, level)
+      VALUES (%s, %s, %s, %s);
+      ]],
+      fixsql(row.dir),      -- direction (eg. "home")
+      fixsql(((row.fromuid == "*") and "**") or "*"),
+      fixsql(row.touid),    -- destination room
+      fixsql(row.level)
+      )
+      dbCheckExecute(query)
+
+      -- remove the old pre-toggle entry
+      query = string.format ([[
+      DELETE FROM exits WHERE dir=%s AND fromuid=%s AND touid=%s AND level=%s;
+      ]],
+      fixsql(row.dir),
+      fixsql(row.fromuid),
+      fixsql(row.touid),    -- destination room
+      fixsql(row.level)
+      )
+      dbCheckExecute(query)
+
+      Note(string.format("\nPORTALRECALL: Recall flag %s portal '%s' to '%s'.\n",((row.fromuid == "*") and "added to") or "removed from",row.dir,(row.name or "N/A")))
+      found = true
+      check_bounce_consistency()
+    end
+    count = count + 1
+  end
+  if found == false then
+    Note(string.format("\nPORTALRECALL FAILED: Did not find index %s in the list of portals. Try .MapperPortalList to see the list.\n", pnum))
+  end
+end -- map_recall
+
 -- first map_portal_add function was contributed by Spartacus.
 function map_portal_add (PortalInfo)
   -- store portal as an exit from anywhere to the current or given room
@@ -1240,7 +1296,7 @@ end -- check_we_can_find
 
 function findNearestJumpRoom(src, dst, target_type)
   local depth = 0
---  local max_depth = mapper.config.SCAN.depth
+  --  local max_depth = mapper.config.SCAN.depth
   local room_sets = {}
   local rooms_list = {}
   local found = false
@@ -1251,7 +1307,7 @@ function findNearestJumpRoom(src, dst, target_type)
   local path_type = ""
 
   table.insert(rooms_list, fixsql(src))
---  local main_status = GetInfo(53)
+  --  local main_status = GetInfo(53)
   while not found and depth < max_depth do
     depth = depth + 1
     -- prune the search space
@@ -1767,7 +1823,7 @@ function goto_listed_next()
     CurrentFoundRoom = 1
   end
   if tonumber(RoomListTable[CurrentFoundRoom].uid) == tonumber(current_room) then
-  -- if we are in the room for this search, head to the next room
+    -- if we are in the room for this search, head to the next room
     CurrentFoundRoom = CurrentFoundRoom + 1
   end
   if CurrentFoundRoom > NumberOfFoundRooms then
@@ -1988,7 +2044,7 @@ end
 function OnBackgroundStartup()
   Note(string.format("%sGMCP %sMapper plugin%s version: %s%s%s\n", dgreen, dred, dwhite, dyellow, version, dwhite))
   Note(string.format("%sYou are using sqlite3 version: %s%s%s\n", dgreen, bgreen, sqlite3.version(), dwhite))
-  -- we need to check if the db file exists and if it has all the tables in it
+  -- we need to check if the can create the db file, if it doesn't exist
   local DBTest = sqlite3.open(dbPath)
   if DBTest:errcode() ~= 0 then
     Note(string.format("%serror code: %s%s%s\nWe had the following error when trying to open the database: %s%s%s\n",
@@ -2024,6 +2080,9 @@ RegisterSpecialCommand("MapperCExitDelete","custom_exits_delete")
 RegisterSpecialCommand("MapperCExitList","custom_exits_list")
 --Mapper Portal functions
 RegisterSpecialCommand("MapperPortalAdd","map_portal_add")
+RegisterSpecialCommand("MapperPortalRecall","map_portal_recall")
+RegisterSpecialCommand("MapperPortalBounceRecall","map_bouncerecall")
+RegisterSpecialCommand("MapperPortalBouncePortal","map_bounceportal")
 RegisterSpecialCommand("MapperPortalList","map_portal_list")
 RegisterSpecialCommand("MapperPortalDelete","map_portal_delete")
 --Mapper Movement functions
