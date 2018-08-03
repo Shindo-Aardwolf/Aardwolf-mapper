@@ -1,5 +1,7 @@
 --All the required modules loaded here
-require("serialize")
+  --[[
+  require("serialize")
+  --]]
 local version = "0.2.1"
 
 -- Colour Stuff
@@ -1253,7 +1255,7 @@ function got_gmcp_room(GMCPRoomData)
       map_purgeroom (nilToStr(room_number), gmcproom.area)
     else
       -- brand new area
-      Note(string.format"%snew area.%s\n", bwhite, nwhite))
+      Note(string.format"%snew area.%s\n", bwhite, dwhite))
       gmcproom.exits = {}
       gmcproom.exit_locks = {}
       gmcproom.notes = ""
