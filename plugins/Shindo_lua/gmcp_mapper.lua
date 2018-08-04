@@ -93,9 +93,13 @@ function dbcheck (code, query)
     code ~= sqlite3.ROW and   -- completed OK with another row of data
     code ~= sqlite3.DONE then -- completed OK, no more rows
     local err = db:errmsg ()  -- the rollback will change the error message
-    err = err.."\n\nCODE: "..code.."\nQUERY: "..query.."\n"
+    err = "\n"..dred..err..byellow.."\n\nCODE: "..bred..code..byellow.."\nQUERY: "..dyellow..query..dwhite.."\n"
     db:exec ("ROLLBACK")      -- rollback any transaction to unlock the database
+    --[[
+    --we don't want to create an error that doesn't allow the db to close again, just flag it as an error
     error (err, 3)            -- show error in caller's context
+    --]]
+    Note(err)
   end -- if
 end -- dbcheck
 -- end of Database Handling
@@ -1926,6 +1930,7 @@ function custom_exits_list (searcharea)
 end -- custom_exits_list
 
 function create_tables ()
+  Note(string.format("%sStarting creation of tables%s.\n", bgreen, dwhite))
   -- create rooms table
   dbCheckExecute([[
   PRAGMA foreign_keys = ON;
@@ -2000,6 +2005,7 @@ function create_tables ()
   INSERT INTO rooms_lookup (uid, name) SELECT uid, name FROM rooms;
   COMMIT;
   ]])
+  Note(string.format("%sEnding creation of tables%s.\n", byellow, dwhite))
 end -- function create_tables
 
 function update_gmcp_mytier(GMCPCharBase)
