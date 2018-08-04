@@ -710,6 +710,10 @@ function custom_exits_add_door (doordirection)
   end
   room = rooms[current_room]
   cexit_dest = room.exits[valid_direction[DoorDir]]
+  if cexit_dest == nil then
+    Note(string.format("%sAre you sure there is a door in that %sdirection?%s\n", byellow, bred, dwhite))
+    return
+  end
   if LeaveDoorOpen == "1" then
     cexit_command = string.format("%s;%s",
     DoorDir,
