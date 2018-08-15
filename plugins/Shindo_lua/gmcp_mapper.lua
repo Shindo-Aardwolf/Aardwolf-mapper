@@ -2,7 +2,7 @@
   --[[
   require("serialize")
   --]]
-local version = "0.2.1"
+local version = "0.2.2"
 
 -- Colour Stuff
 local ansi = "\27["
@@ -41,7 +41,7 @@ function forceOpenDB()
   force_nests = force_nests+1
   if not db:isopen() then
     forced_opened = true
-    -- print("Forcing open")
+    --Note("Forcing open\n")
     db = assert (sqlite3.open(dbPath))
   end
 end
@@ -51,7 +51,7 @@ function closeDBifForcedOpen()
   if forced_opened and (force_nests <= 0) then
     force_nests = 0
     forced_opened = false
-    -- print("Forcing closed")
+    --Note("Forcing closed\n")
     db:close()
   end
 end
@@ -62,7 +62,7 @@ function DBisOpen(warn)
   end
   if warn then
     Note("MAPPER ERROR: The map database is closed for safety when not connected to Aardwolf.\n"
-    .."If you want to change the DB, please connect to the game.")
+    .."If you want to change the DB, please connect to the game.\n")
   end
   return false
 end
