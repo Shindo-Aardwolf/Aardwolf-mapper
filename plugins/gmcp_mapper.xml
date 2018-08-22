@@ -78,6 +78,12 @@
         </html>
         ]]>
       </description>
+      <aliases>
+        <alias pre="^mapper goto (.*?)$" post="/map_goto(&apos;$1&apos;)" enabled="true" />
+        <alias pre="^mapper thisroom$" post="/show_this_room()" enabled="true" />
+        <alias pre="^mapper portals$" post="/map_portal_list()" enabled="true" />
+        <alias pre="^mapper cexits delete$" post="/custom_exits_delete()" enabled="true" />
+      </aliases>
       <triggers>
         <trigger title="gmcproomupdate" pattern="%room.info" regexp="false" sequence="1">
           <replace fireWhen="always"></replace>
