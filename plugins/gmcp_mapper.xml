@@ -1,117 +1,117 @@
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <blowtorch xmlversion="2">
-  <plugins>
-    <plugin name="mapper_gmcp" id="52">
-      <author>Shindo</author>
-      <description><![CDATA[
-        <html>
-          <head>
-            <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-            <title>GMCP Mapper</title>
-            <style type="text/css">
-              body {
-              color: #999;
-              }
-            </style>
-          </head>
+	<plugins>
+		<plugin name="mapper_gmcp" id="52">
+			<author>Shindo</author>
+			<description><![CDATA[
+				<html>
+					<head>
+						<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+						<title>GMCP Mapper</title>
+						<style type="text/css">
+							body {
+							color: #999;
+							}
+						</style>
+					</head>
 
-          <body>
-            <h3>GMCP Mapper</h3)
-            <ol><b>Instructions for installing</b>
-              <li>Before installing you need to add GMCP options to Blowtorch.  </li>
-              <li>Bring up the menu with the menu key in the top right corner </li>
-              <li>Select <b>Options</b>, then <b>Service</b>, then <b>GMCP Options</b> </li>
-              <li>Pleae make sure <b>Use GMCP</b> is ticked on the right hand side.  </li>
-              <li>Press <b>Support String</b> and put "room 1", "char 1" <b>WITH THE ""</b>. If there
-                are any other options already there then you need a <i>comma</i> between the options.
-                For example: "char 1", "room 1", "comm 1" </li>
-            </ol>
-            <p>This plugin uses functions from the Aardwolf MushClient mapper, which was contributed
-              to by Nick Gammon, Lasher, Fiendish and Spartacus. There may be other people who
-              contributed towards the original plugin that I have not acknowledge, if you are aware 
-              of someone I have left out please contact me via a personal note on aardwolf and I 
-              will rectify that ommision as quickly as possible.</p>
-            <p>This plugin only stores rooms, portals and areas at this time. It has functions to
-              move to rooms by walking and via portals but does not yet have the ability to
-              utilise custom exits.</p>
-            <p> In order to use the functions listed below. Please remember to put . in front of 
-              the function name and to include the required keywords</p>
-            <ul>Current Commands for interacting with mapper
-              <li><b>MapperSetup</b> run this when you install this pluging, before you start
-                moving, or if you get errors complaining about the tables not existing</li>
-              <li><b>MapperGMCPForceOn</b> this function re-issues the GMCP command, use this if \
-                the client crashes and the mapper doesn't seem to be working properly on resuming</li>
-              <li><b>MapperShowThisRoom</b> send this command if you wish to get a report
-                regarding the current room.</li>
-              <li><b>MapperListAreas</b> <i>keyword</i> If a keyword is supplied this command reports
-                keyword, area name and how much of the areas known to the mapper have been captured
-                by the database. If no keyword is supplied it lists all areas.</li>
-              <li><b>MapperListRooms</b> <i>keyphrase</i> this returns the uid, full room name and 
-                area of all rooms that match the keyphrase, in the database</li>
-              <li><b>MapperWhere</b> <i>uid</uid> this returns the path to the room with the uid, 
-                if no path is known it reports that the room was not found.</li>
-              <li><b>MapperPortalAdd</b> <i>level</i> <i>portal command</i> Add a portal to the 
-                database to the current room. The level of the portal determines at which level 
-                the mapper can use this portal. The command provided should be an alias not just 
-                the name of the portal.</li>
-              <li><b>MapperPortalList</b> Lists all portal currently in the database.</li>
-              <li><b>MapperPortalDelete</b> <i>#number or keyword</i> Deletes a portal from the 
-                database based on either the keyword or number. Please note the number correlates
-                to the number listed in the list of portals</li>
-              <li><b>MapperEditNote</b> <i>texttoadd</i> use this command to edit or add notes
-                to a room.</li>
-              <li><b>MapperGoto</b> <i>uid</i> this command takes you to the room with the given
-                uid, if a path to the room is known.</li>
-              <li><b>MapperNoRecall</b> <i>0/1</i> This command marks or clears the current rooms 
-                status as to wether you can recall from it. 0 clears, 1 sets norecall.</li>
-              <li><b>MapperNoPortal</b> <i>0/1</i> This command marks or clears the current rooms 
-                status as to wether you can portal from it. 0 clears, 1 sets noportal.</li>
-              <li><b>MapperSetTier</b> <i>tier</i> This function sets the current tier of your 
-                character, this is required so that the mapper can determine which portals it can
-                and can't utilise.</li>
-              <li><b>MapperSetLevel</b> <i>level</i> This function sets the current level of your 
-                character, this is required so that the mapper can determine which portals it can
-                and can't utilise.</li>
-              <li><b></b> <i></i></li>
-            </ul>
-          </body>
-        </html>
-        ]]>
-      </description>
-      <aliases>
-        <alias pre="^mapper goto (.*?)$" post="/map_goto(&apos;$1&apos;)" enabled="true" />
-        <alias pre="^mapper thisroom$" post="/show_this_room()" enabled="true" />
-        <alias pre="^mapper portals$" post="/map_portal_list()" enabled="true" />
-        <alias pre="^mapper cexits delete$" post="/custom_exits_delete()" enabled="true" />
-      </aliases>
-      <triggers>
-        <trigger title="gmcproomupdate" pattern="%room.info" regexp="false" sequence="1">
-          <replace fireWhen="always"></replace>
-          <script function="got_gmcp_room" fireWhen="always" />
-          <gag />
-        </trigger>
-        <trigger title="gmcpareasupdate" pattern="%room.area" regexp="false" sequence="1">
-          <replace fireWhen="always"></replace>
-          <script function="update_gmcp_area" fireWhen="always" />
-          <gag />
-        </trigger>
-        <trigger title="gmcpcharbaseupdate" pattern="%char.base" regexp="false" sequence="1">
-          <replace fireWhen="always"></replace>
-          <script function="update_gmcp_mytier" fireWhen="always" />
-          <gag />
-        </trigger>
-        <trigger title="gmcpcharstatusupdate" pattern="%char.status" regexp="false" sequence="1">
-          <replace fireWhen="always"></replace>
-          <script function="update_gmcp_mystatus" fireWhen="always" />
-          <gag />
-        </trigger>
-      </triggers>
-      <script name="bootstrap"><![CDATA[
-        Plugin_Dir = "/Shindo_lua"
-        dofile(GetPluginInstallDirectory()..Plugin_Dir.."/gmcp_mapper.lua")
-        ]]>
-      </script>
-      <timers />
-    </plugin>
-  </plugins>
+					<body>
+						<h3>GMCP Mapper</h3)
+						<ol><b>Instructions for installing</b>
+							<li>Before installing you need to add GMCP options to Blowtorch.  </li>
+							<li>Bring up the menu with the menu key in the top right corner </li>
+							<li>Select <b>Options</b>, then <b>Service</b>, then <b>GMCP Options</b> </li>
+							<li>Pleae make sure <b>Use GMCP</b> is ticked on the right hand side.  </li>
+							<li>Press <b>Support String</b> and put "room 1", "char 1" <b>WITH THE ""</b>. If there
+								are any other options already there then you need a <i>comma</i> between the options.
+								For example: "char 1", "room 1", "comm 1" </li>
+						</ol>
+						<p>This plugin uses functions from the Aardwolf MushClient mapper, which was contributed
+							to by Nick Gammon, Lasher, Fiendish and Spartacus. There may be other people who
+							contributed towards the original plugin that I have not acknowledge, if you are aware
+							of someone I have left out please contact me via a personal note on aardwolf and I
+							will rectify that ommision as quickly as possible.</p>
+						<p>This plugin only stores rooms, portals and areas at this time. It has functions to
+							move to rooms by walking and via portals but does not yet have the ability to
+							utilise custom exits.</p>
+						<p> In order to use the functions listed below. Please remember to put . in front of
+							the function name and to include the required keywords</p>
+						<ul>Current Commands for interacting with mapper
+							<li><b>MapperSetup</b> run this when you install this pluging, before you start
+								moving, or if you get errors complaining about the tables not existing</li>
+							<li><b>MapperGMCPForceOn</b> this function re-issues the GMCP command, use this if \
+								the client crashes and the mapper doesn't seem to be working properly on resuming</li>
+							<li><b>MapperShowThisRoom</b> send this command if you wish to get a report
+								regarding the current room.</li>
+							<li><b>MapperListAreas</b> <i>keyword</i> If a keyword is supplied this command reports
+								keyword, area name and how much of the areas known to the mapper have been captured
+								by the database. If no keyword is supplied it lists all areas.</li>
+							<li><b>MapperListRooms</b> <i>keyphrase</i> this returns the uid, full room name and
+								area of all rooms that match the keyphrase, in the database</li>
+							<li><b>MapperWhere</b> <i>uid</uid> this returns the path to the room with the uid,
+								if no path is known it reports that the room was not found.</li>
+							<li><b>MapperPortalAdd</b> <i>level</i> <i>portal command</i> Add a portal to the
+								database to the current room. The level of the portal determines at which level
+								the mapper can use this portal. The command provided should be an alias not just
+								the name of the portal.</li>
+							<li><b>MapperPortalList</b> Lists all portal currently in the database.</li>
+							<li><b>MapperPortalDelete</b> <i>#number or keyword</i> Deletes a portal from the
+								database based on either the keyword or number. Please note the number correlates
+								to the number listed in the list of portals</li>
+							<li><b>MapperEditNote</b> <i>texttoadd</i> use this command to edit or add notes
+								to a room.</li>
+							<li><b>MapperGoto</b> <i>uid</i> this command takes you to the room with the given
+								uid, if a path to the room is known.</li>
+							<li><b>MapperNoRecall</b> <i>0/1</i> This command marks or clears the current rooms
+								status as to wether you can recall from it. 0 clears, 1 sets norecall.</li>
+							<li><b>MapperNoPortal</b> <i>0/1</i> This command marks or clears the current rooms
+								status as to wether you can portal from it. 0 clears, 1 sets noportal.</li>
+							<li><b>MapperSetTier</b> <i>tier</i> This function sets the current tier of your
+								character, this is required so that the mapper can determine which portals it can
+								and can't utilise.</li>
+							<li><b>MapperSetLevel</b> <i>level</i> This function sets the current level of your
+								character, this is required so that the mapper can determine which portals it can
+								and can't utilise.</li>
+							<li><b></b> <i></i></li>
+						</ul>
+					</body>
+				</html>
+				]]>
+			</description>
+			<aliases>
+				<alias pre="^mapper goto (.*?)$" post="/map_goto(&apos;$1&apos;)" enabled="true" />
+				<alias pre="^mapper thisroom$" post="/show_this_room()" enabled="true" />
+				<alias pre="^mapper portals$" post="/map_portal_list()" enabled="true" />
+				<alias pre="^mapper cexits delete$" post="/custom_exits_delete()" enabled="true" />
+			</aliases>
+			<triggers>
+				<trigger title="gmcproomupdate" pattern="%room.info" regexp="false" sequence="1">
+					<replace fireWhen="always"></replace>
+					<script function="got_gmcp_room" fireWhen="always" />
+					<gag />
+				</trigger>
+				<trigger title="gmcpareasupdate" pattern="%room.area" regexp="false" sequence="1">
+					<replace fireWhen="always"></replace>
+					<script function="update_gmcp_area" fireWhen="always" />
+					<gag />
+				</trigger>
+				<trigger title="gmcpcharbaseupdate" pattern="%char.base" regexp="false" sequence="1">
+					<replace fireWhen="always"></replace>
+					<script function="update_gmcp_mytier" fireWhen="always" />
+					<gag />
+				</trigger>
+				<trigger title="gmcpcharstatusupdate" pattern="%char.status" regexp="false" sequence="1">
+					<replace fireWhen="always"></replace>
+					<script function="update_gmcp_mystatus" fireWhen="always" />
+					<gag />
+				</trigger>
+			</triggers>
+			<script name="bootstrap"><![CDATA[
+				Plugin_Dir = "/Shindo_lua"
+				dofile(GetPluginInstallDirectory()..Plugin_Dir.."/gmcp_mapper.lua")
+				]]>
+			</script>
+			<timers />
+		</plugin>
+	</plugins>
 </blowtorch>
