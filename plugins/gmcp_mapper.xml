@@ -32,15 +32,12 @@
 							of someone I have left out please contact me via a personal note on aardwolf and I
 							will rectify that ommision as quickly as possible.</p>
 						<p>This plugin only stores rooms, portals and areas at this time. It has functions to
-							move to rooms by walking and via portals but does not yet have the ability to
-							utilise custom exits.</p>
+							move to rooms by walking and via portals and it can utilise custom exits.</p>
 						<p> In order to use the functions listed below. Please remember to put . in front of
 							the function name and to include the required keywords</p>
 						<ul>Current Commands for interacting with mapper
 							<li><b>MapperSetup</b> run this when you install this pluging, before you start
 								moving, or if you get errors complaining about the tables not existing</li>
-							<li><b>MapperGMCPForceOn</b> this function re-issues the GMCP command, use this if \
-								the client crashes and the mapper doesn't seem to be working properly on resuming</li>
 							<li><b>MapperShowThisRoom</b> send this command if you wish to get a report
 								regarding the current room.</li>
 							<li><b>MapperListAreas</b> <i>keyword</i> If a keyword is supplied this command reports
@@ -83,6 +80,8 @@
 				<alias pre="^mapper thisroom$" post="/show_this_room()" enabled="true" />
 				<alias pre="^mapper portals$" post="/map_portal_list()" enabled="true" />
 				<alias pre="^mapper cexits delete$" post="/custom_exits_delete()" enabled="true" />
+				<alias pre="^mapper portal (.*)$" post="/map_portal_add(&quot;$1&quot;)" enabled="true" />
+				<alias pre="^mapper listexact (.*?)$" post="/populate_exact_room_list(&quot;$1&quot;)" enabled="true" />
 			</aliases>
 			<triggers>
 				<trigger title="gmcproomupdate" pattern="%room.info" regexp="false" sequence="1">

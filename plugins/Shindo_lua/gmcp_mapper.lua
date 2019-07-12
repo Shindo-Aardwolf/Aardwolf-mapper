@@ -1741,7 +1741,7 @@ function map_list_exact_rooms (SearchData)
 		Note("+------------------------------ START OF SEARCH -------------------------------+\n")
 	end
 	-- find matching rooms using FTS3
-	local name = "%"..RoomName.."%"
+	local name = RoomName
 	if string.sub(RoomName,1,1) == "\"" and string.sub(RoomName,-1) == "\"" then
 		name = string.sub(RoomName,2,-2)
 	end
@@ -1851,7 +1851,7 @@ function map_list_exact_rooms_extended (SearchData, ReturnAsList, SearchByArea)
 		Note("+------------------------------ START OF SEARCH -------------------------------+\n")
 	end
 	-- find matching rooms using FTS3
-	local name = "%"..RoomName.."%"
+	local name = RoomName
 	if string.sub(RoomName,1,1) == "\"" and string.sub(RoomName,-1) == "\"" then
 		name = string.sub(RoomName,2,-2)
 	end
