@@ -16,6 +16,8 @@ Where functions take arguments I have include them in *italics*
 
 ## Mapper Cexit functions
 - MapperCExitAdd *uid custom exit commands*  
+- MapperCExitSimpleAdd *custom exit commands*  
+- MapperCLinkAdd *from_uid to_uid custom_exit_commands*  
 - MapperCExitAddDoor *direction*  
 - MapperCExitDelete  
 - MapperCExitList *here/thisroom/nameofarea*  

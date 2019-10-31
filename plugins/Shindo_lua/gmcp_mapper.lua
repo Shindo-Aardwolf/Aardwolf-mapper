@@ -794,7 +794,90 @@ function custom_exits_add (customexitcmd)
 	))
 
 	SendToServer(cexit_command)
+	-- We get the roomdata again as the cached room is without the exit
+	load_room_from_database(cexit_start)
 end -- custom_exits_add
+
+
+-- custom_exits_simple_add function (by Malaikat)
+function custom_exits_simple_add (cexit_command)
+	local cexit_start
+	if cexit_command == "" then
+		Note("Nothing to do!")
+		return
+	end -- if cexit_command
+	-- Setting the starting room to current room
+	if current_room then
+		cexit_start = current_room
+	else
+		Note("CEXIT FAILED: No room received from the mud yet. Try using the 'LOOK' command first.")
+		return
+	end
+	if cexit_start == "-1" then
+		Note ("CEXIT FAILED: You cannot link custom exits from unmappable rooms.")
+		return
+	end
+	-- We are going into the custom direction
+	SendToServer(cexit_command)
+	-- We have to look again!
+	-- SendToServer("look")
+	Send_GMCP_Packet("request room")
+	-- Set the cexitsimple variable for the custom_exits_simple_add_finish function after reaching the exit
+	cexitsimple = cexit_start .. " " .. cexit_command
+end -- custom_exits_simple_add
+
+-- custom_exits_simple_add function (by Malaikat)
+function custom_exits_simple_add_finish ()
+
+	local _, _, cexit_start, cexit_command = string.find(cexitsimple,"(%d+)%s(.*)")
+
+	if cexit_start == current_room then
+		Note(string.format("%s*** MAPPER CEXIT FAILED: Start room equal destination. Something went wrong! *** %s\n", bmagenta, dwhite))
+		cexitsimple = nil  -- It didn't work. Delete the cexit
+		return
+	end
+
+	dbCheckExecute(string.format ("INSERT OR REPLACE INTO exits (dir, fromuid, touid) VALUES (%s, %s, %s);",
+	fixsql (cexit_command),  -- direction (eg. "n")
+	fixsql (cexit_start),  -- from current room
+	fixsql (current_room) -- destination room
+	))
+
+	Note(string.format("%s*** MAPPER CEXIT ADDED *** %s\n", bcyan, dwhite))
+	-- Delete the Cexit
+	cexitsimple = nil
+	-- We get the roomdata again as the cached room is without the exit
+	load_room_from_database(cexit_start)
+
+end -- custom_exits_add_finish
+-- custom_link_add function (by Malaikat)
+
+
+function custom_link_add (customexitcmd)
+	local _, _, cexit_start, cexit_dest, cexit_command = string.find(customexitcmd,"(%d+)%s(%d+)%s(.*)")
+
+	if cexit_dest == "" then
+		Note("we need a destination uid")
+		return
+	end
+	if cexit_start == "" then
+		Note("we need a start uid")
+		return
+	end
+	if cexit_command == "" then
+		Note("Nothing to do!")
+		return
+	end -- if cexit_command
+	dbCheckExecute(string.format ("INSERT OR REPLACE INTO exits (dir, fromuid, touid) VALUES (%s, %s, %s);",
+	fixsql (cexit_command),  -- direction (eg. "n")
+	fixsql (cexit_start),  -- from room
+	fixsql (cexit_dest) -- destination room
+	))
+
+	Note(string.format("%s*** MAPPER CEXIT ADDED *** %s\n", bcyan, dwhite))
+	-- We get the roomdata again as the cached room is without the exit
+	load_room_from_database(cexit_start)
+end -- custom_link_add
 
 last_area_requested = ""
 function save_room_to_database (uid,room)
@@ -1296,6 +1379,15 @@ function got_gmcp_room(GMCPRoomData)
 		fix_up_exit ()
 	end -- exit was wrong
 
+	-- Check if the an CexitSimple needs to be added
+	if (cexitsimple ~= nil) then
+		if (from_room == current_room) then
+			-- We didn't move so drop the cexitsimple
+			cexitsimple = nil
+		else
+			custom_exits_simple_add_finish()
+		end
+	end
 	return
 end
 
@@ -2257,6 +2349,8 @@ RegisterSpecialCommand("MapperListRooms", "map_list_rooms")
 RegisterSpecialCommand("MapperWhere", "map_where_uid")
 --Mapper Cexit functions
 RegisterSpecialCommand("MapperCExitAdd", "custom_exits_add")
+RegisterSpecialCommand("MapperCExitSimpleAdd", "custom_exits_simple_add")
+RegisterSpecialCommand("MapperCLinkAdd", "custom_link_add")
 RegisterSpecialCommand("MapperCExitAddDoor", "custom_exits_add_door")
 RegisterSpecialCommand("MapperCExitDelete" ,"custom_exits_delete")
 RegisterSpecialCommand("MapperCExitList", "custom_exits_list")
